@@ -1,9 +1,12 @@
 """Configuración de la app: lee el .env y lo valida al arrancar."""
 
 from functools import lru_cache
+from zoneinfo import ZoneInfo
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.domain.rules import ScheduleRules
 
 
 class Settings(BaseSettings):
@@ -46,3 +49,17 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Crea la configuración una sola vez y la reutiliza en toda la app."""
     return Settings()  # type: ignore[call-arg]  # los valores vienen del .env
+
+
+def get_schedule_rules() -> ScheduleRules:
+    """Traduce la configuración a las reglas que entiende el dominio."""
+    settings = get_settings()
+    return ScheduleRules(
+        timezone=ZoneInfo(settings.timezone),
+        opening_hour=settings.opening_hour,
+        closing_hour=settings.closing_hour,
+        consultation_minutes=settings.consultation_minutes,
+        buffer_minutes=settings.buffer_minutes,
+        min_advance_hours=settings.min_advance_hours,
+        max_advance_days=settings.max_advance_days,
+    )

@@ -5,7 +5,7 @@ Etapa 3 de SDD: 23 tareas de 1 a 3 horas, en orden. Cada una tiene un criterio d
 ## Fase 0 — Setup
 
 - [x] **T01 · Repo y estructura.** Crear el repo `voice-receptionist`, el `.venv`, las carpetas del Plan, `requirements.txt` con versiones fijas, `.gitignore`, `.env.example` y copiar la Spec, el Plan y estas tareas a `specs/`. _Hecho cuando:_ `uvicorn app.main:app` levanta y `GET /health` responde `{"status": "ok"}`; primer commit subido.
-- [ ] **T02 · Configuración.** `app/config.py` con pydantic-settings: claves, zona horaria (America/Lima) y reglas de negocio configurables. _Hecho cuando:_ si falta una clave obligatoria, la app no arranca y el error dice cuál falta; un test lo verifica.
+- [x] **T02 · Configuración.** `app/config.py` con pydantic-settings: claves, zona horaria (America/Lima) y reglas de negocio configurables. _Hecho cuando:_ si falta una clave obligatoria, la app no arranca y el error dice cuál falta; un test lo verifica.
 
 ## Fase 1 — Dominio, reglas y servicios (con fakes)
 
