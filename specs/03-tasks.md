@@ -11,10 +11,10 @@ Etapa 3 de SDD: 23 tareas de 1 a 3 horas, en orden. Cada una tiene un criterio d
 
 Todo se prueba sin internet: los servicios externos se reemplazan por fakes en memoria.
 
-- [ ] **T03 · Modelos del dominio.** `domain/models.py`: `Area`, `Modality`, `BookingStatus`, `Client`, `Booking`, y la tabla de precios por área. _Hecho cuando:_ tests verifican el precio de cada área y que un número sin formato +51 se rechaza.
-- [ ] **T04 · Reglas de horario.** `domain/rules.py`: horario de atención, duración de 45 + 15 min, anticipación mínima de 2 h y máxima de 30 días, y generación de horarios posibles de un día. _Hecho cuando:_ tests cubren sábado (cerrado), un horario dentro de 1 h (rechazado) y un día normal (lista correcta de horarios).
-- [ ] **T05 · Puertos.** `domain/ports.py` con `CalendarPort`, `PaymentPort`, `MessagingPort` y `BookingRepository` como `Protocol`. _Hecho cuando:_ existen fakes en `tests/fakes.py` que los implementan y el verificador de tipos no marca errores.
-- [ ] **T06 · Servicio de disponibilidad.** `services/availability.py`: cruza los horarios posibles con los ocupados del calendario y devuelve hasta 3, empezando por el más cercano al pedido. _Hecho cuando:_ tests reproducen E2 (ocupado → alternativas) y E3 (sábado → propone lunes).
+- [x] **T03 · Modelos del dominio.** `domain/models.py`: `Area`, `Modality`, `BookingStatus`, `Client`, `Booking`, y la tabla de precios por área. _Hecho cuando:_ tests verifican el precio de cada área y que un número sin formato +51 se rechaza.
+- [x] **T04 · Reglas de horario.** `domain/rules.py`: horario de atención, duración de 45 + 15 min, anticipación mínima de 2 h y máxima de 30 días, y generación de horarios posibles de un día. _Hecho cuando:_ tests cubren sábado (cerrado), un horario dentro de 1 h (rechazado) y un día normal (lista correcta de horarios).
+- [x] **T05 · Puertos.** `domain/ports.py` con `CalendarPort`, `PaymentPort`, `MessagingPort` y `BookingRepository` como `Protocol`. _Hecho cuando:_ existen fakes en `tests/fakes.py` que los implementan y el verificador de tipos no marca errores.
+- [x] **T06 · Servicio de disponibilidad.** `services/availability.py`: cruza los horarios posibles con los ocupados del calendario y devuelve hasta 3, empezando por el más cercano al pedido. _Hecho cuando:_ tests reproducen E2 (ocupado → alternativas) y E3 (sábado → propone lunes).
 - [ ] **T07 · Servicio de reservas.** `services/booking.py`: crear (revalida el horario, evento PENDIENTE, orden, WhatsApp), confirmar (idempotente) y expirar. _Hecho cuando:_ tests cubren E10 (expira a los 30 min), E11 (confirma y envía WhatsApp), doble confirmación (un solo WhatsApp) y horario tomado entre consulta y reserva (rechaza).
 - [ ] **T08 · Servicio de derivación.** `services/handoff.py`: arma el mensaje con nombre, número, área, motivo y resumen y lo envía al responsable. _Hecho cuando:_ un test verifica el texto exacto que recibe el fake de mensajería.
 
@@ -38,13 +38,13 @@ Aquí se crean las cuentas de prueba. Cada adaptador implementa su puerto; los s
 ## Fase 4 — Agente de voz
 
 - [ ] **T18 · Prompt e información del estudio.** `assistant/estudio.md` (áreas, precios, dirección, horarios, modalidades) y `assistant/system_prompt.md` con rol, contexto, tarea, formato y los límites de la Spec. _Hecho cuando:_ el prompt cubre cada regla de la sección 5 de la Spec y está versionado.
-- [ ] **T19 · Asistente en Vapi.** Modelo mini, voz en español, reconocimiento de voz en español y las 3 tools apuntando a la URL de ngrok; guardar la configuración en `assistant/tools.json`. _Hecho cuando:_ desde el panel de Vapi, una llamada de prueba agenda E1 de punta a punta.
+- [ ] **T19 · Asistente en Vapi.** Modelo mini, voz en español, reconocimiento de voz en español las 3 tools apuntando a la URL de ngrok y el ASR en streaming en español (con palabras clave si el proveedor lo permite); guardar la configuración en `assistant/tools.json`. _Hecho cuando:_ desde el panel de Vapi, una llamada de prueba agenda E1 de punta a punta.
 - [ ] **T20 · Página de la demo.** Página con el Web SDK de Vapi y un botón "Hablar con la recepcionista". _Hecho cuando:_ desde el navegador se completa E1 y llega el WhatsApp con el link.
 - [ ] **T21 · Observabilidad.** Traza de Langfuse por llamada con un span por tool, y webhook `end-of-call-report` guardado en la base. _Hecho cuando:_ en Langfuse se ve una llamada con sus tools, latencias y resultado.
 
 ## Fase 5 — Evaluación y entrega
 
-- [ ] **T22 · Golden cases.** Correr E1–E13 por voz y registrar el resultado de cada uno en `specs/evaluacion.md` contra A1–A9, con la latencia promedio. _Hecho cuando:_ la tabla está completa y cada criterio fallido tiene una causa anotada.
-- [ ] **T23 · Iterar y entregar.** Ajustar el prompt o las tools hasta cumplir A1–A9; README con diagrama, decisiones, setup, resultados y limitaciones; video de 1 minuto de una llamada real. _Hecho cuando:_ todos los criterios están en verde, el repo es público y el video está en el README.
+- [ ] **T22 · Golden cases.** Correr E1–E13 por voz y registrar el resultado de cada uno en `specs/evaluacion.md` contra A1–A10, con la latencia promedio, el WER y la precisión de entidades críticas. _Hecho cuando:_ la tabla está completa y cada criterio fallido tiene una causa anotada.
+- [ ] **T23 · Iterar y entregar.** Ajustar el prompt o las tools hasta cumplir A1–A10; README con diagrama, decisiones, setup, resultados y limitaciones; video de 1 minuto de una llamada real. _Hecho cuando:_ todos los criterios están en verde, el repo es público y el video está en el README.
 
 Opcional después de la v1: desplegar el backend en Render o Railway, recordatorios 24 h antes, reprogramar y cancelar por voz, y pasar a la API oficial de WhatsApp.

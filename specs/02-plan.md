@@ -17,6 +17,7 @@ La plataforma de voz resuelve el audio; nosotros construimos el cerebro: las too
 | Pago | **Página de pago propia con Culqi Checkout**; enviamos su link por WhatsApp | Culqi no entrega un link por API para órdenes: su Checkout se embebe en una página, así que la servimos nosotros ([docs de Culqi](https://docs.culqi.com/es/documentacion/pagos-online/ordenes-de-pago/resumen)) | Pedir la tarjeta por voz: riesgo de seguridad y normas de datos de tarjeta |
 | Confirmación del pago | **Webhook de Culqi** (`order.status.changed`) y resultado del cargo con tarjeta | El pago puede llegar minutos después; el webhook es la confirmación confiable | Consultar el estado cada cierto tiempo: más lento y más llamadas |
 | WhatsApp | **Interfaz propia + Twilio WhatsApp Sandbox** en la demo | Prueba gratis y rápida; detrás de una interfaz, cambiar a la API oficial de Meta es cambiar una clase | **WhatsApp Cloud API de Meta** directo: requiere verificar el negocio y plantillas aprobadas. Queda para producción |
+| Transcripción (voz a texto) | **ASR en streaming en español** (p. ej. Deepgram, configurado en Vapi) y, si el proveedor lo permite, palabras clave ("Lex Andina", nombres de las áreas) | Transcribe mientras el cliente habla: baja la latencia (A8). Es un modelo Transformer, el tipo que la lecture 2 del M4 recomienda para entender audio en tiempo real | **Whisper por tramos**: muy preciso, pero procesa el audio por partes y agrega espera en una conversación en vivo |
 | LLM del agente | **Modelo rápido de OpenAI** (variante mini), configurable | En voz la latencia manda; las tareas son acotadas | Un modelo grande: más lento y caro sin mejorar estas tareas |
 | Observabilidad | **Langfuse** para el backend + registros de llamada de Vapi | Ya lo dominas; traza cada tool con su latencia y resultado | Solo logs: sin jerarquía ni costos |
 | Webhooks en desarrollo | **ngrok** (URL pública temporal) | Vapi y Culqi necesitan llegar a tu backend local | Desplegar en cada cambio: lento para iterar |
@@ -145,7 +146,16 @@ Una reserva solo tiene 3 estados y cada cambio lo dispara un evento concreto.
 | Integración | Endpoints: formato de Vapi, webhook de Culqi, página de pago | `TestClient` de FastAPI con adaptadores falsos |
 | Golden cases | Los 13 escenarios de la Spec (E1–E13) | Llamadas de prueba reales con Vapi en modo de prueba; resultado registrado en una tabla por versión |
 
-**Evaluación:** por cada versión se corren E1–E13 y se mide contra A1–A9: agendas correctas, horarios ocupados respetados, derivaciones, latencia promedio. Un cambio de prompt o de modelo solo entra si no empeora ninguna métrica.
+**Evaluación:** por cada versión se corren E1–E13 y se mide contra A1–A10: agendas correctas, horarios ocupados respetados, derivaciones, latencia promedio. Un cambio de prompt o de modelo solo entra si no empeora ninguna métrica.
+
+**Calidad de la transcripción** (lecture 2 del M4: los errores del ASR se propagan al LLM y el WER es contextual):
+
+| Métrica | Qué mide | Meta |
+| --- | --- | --- |
+| WER general | Palabras mal transcritas / palabras de la referencia, sobre las grabaciones de E1–E13 | Se registra por versión; sirve para comparar proveedores de ASR |
+| Precisión de entidades críticas | ¿Se capturaron exactos el número de WhatsApp, la fecha, la hora y el área? | 100% en el WhatsApp (A10); 9 de 10 en el resto (A3) |
+
+Si un escenario falla, el diagnóstico sigue este orden: ¿el audio fue claro? → ¿el ASR transcribió bien? → ¿el LLM entendió bien? Cambiar el LLM no arregla una transcripción mala.
 
 ## 7. Seguridad y riesgos
 

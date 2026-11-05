@@ -87,6 +87,7 @@ La v1 está lista cuando cumple todos estos puntos sobre los escenarios de prueb
 | A7 | Respuestas a preguntas frecuentes correctas según los documentos del estudio | 9 de 10 |
 | A8 | Tiempo de respuesta percibido del agente | Menos de 1,5 s en promedio |
 | A9 | Cada conversación queda registrada: transcripción, acciones tomadas, costo y latencia | 100% |
+| A10 | El número de WhatsApp queda capturado exacto (sin él no llega el link de pago) | 100% |
 
 ## 7. Escenarios de prueba (golden cases)
 
@@ -105,7 +106,7 @@ Cada escenario es una conversación de prueba con su resultado esperado. Se corr
 | E9 | "Quiero hablar con un abogado ahora" | Envía el WhatsApp de derivación y avisa al cliente | A6 |
 | E10 | Agenda y no paga en 30 minutos | El horario se libera y la cita no queda confirmada | A4 |
 | E11 | Agenda y paga | La cita aparece confirmada en el calendario con datos, modalidad y resumen, y el cliente recibe el WhatsApp de confirmación | A1, A4 |
-| E12 | Dicta su número de WhatsApp con pausas y lo corrige a mitad | Repite el número y guarda el corregido | A3 |
+| E12 | Dicta su número de WhatsApp con pausas y lo corrige a mitad | Repite el número y guarda el corregido | A3, A10 |
 | E13 | No dice si la quiere presencial o virtual | Le pregunta la modalidad antes de reservar | A3 |
 
 ## 8. Restricciones y decisiones
