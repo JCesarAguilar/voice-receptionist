@@ -49,6 +49,10 @@ def format_soles(cents: int) -> str:
 PERU_MOBILE = re.compile(r"^\+519\d{8}$")
 
 
+class InvalidTransitionError(ValueError):
+    """Un cambio de estado que el negocio no permite."""
+
+
 class Client(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -100,3 +104,16 @@ class Booking(BaseModel):
         if self.end <= self.start:
             raise ValueError("La hora de fin debe ser posterior a la de inicio")
         return self
+
+    def confirm(self, at: datetime) -> None:
+        """Pasa a CONFIRMED. Solo desde PENDING_PAYMENT."""
+        if self.status != BookingStatus.PENDING_PAYMENT:
+            raise InvalidTransitionError("Solo se confirma una reserva pendiente.")
+        self.status = BookingStatus.CONFIRMED
+        self.confirmed_at = at
+
+    def expire(self) -> None:
+        """Pasa a EXPIRED. Solo desde PENDING_PAYMENT."""
+        if self.status != BookingStatus.PENDING_PAYMENT:
+            raise InvalidTransitionError("Solo vence una reserva pendiente.")
+        self.status = BookingStatus.EXPIRED

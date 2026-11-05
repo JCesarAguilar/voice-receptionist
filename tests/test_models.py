@@ -1,36 +1,17 @@
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 import pytest
 from pydantic import ValidationError
 
 from app.domain.models import (
     Area,
-    Booking,
     BookingStatus,
     Client,
-    Modality,
+    InvalidTransitionError,
     format_soles,
     price_for,
 )
-
-LIMA = ZoneInfo("America/Lima")
-
-
-def make_booking(**overrides) -> Booking:
-    start = datetime(2026, 11, 12, 10, 0, tzinfo=LIMA)
-    data = {
-        "client": Client(name="Ana Torres", whatsapp="+51987654321"),
-        "area": Area.LABORAL,
-        "modality": Modality.VIRTUAL,
-        "start": start,
-        "end": start + timedelta(minutes=45),
-        "summary": "Despido sin aviso",
-        "price_cents": price_for(Area.LABORAL),
-        "created_at": datetime(2026, 11, 10, 9, 0, tzinfo=LIMA),
-    }
-    data.update(overrides)
-    return Booking(**data)
+from tests.factories import LIMA, make_booking
 
 
 @pytest.mark.parametrize(
@@ -88,3 +69,19 @@ def test_booking_rejects_end_before_start():
 def test_booking_rejects_unknown_area():
     with pytest.raises(ValidationError):
         make_booking(area="tributario")
+
+
+def test_expired_booking_cannot_be_confirmed():
+    booking = make_booking()
+    booking.expire()
+
+    with pytest.raises(InvalidTransitionError):
+        booking.confirm(booking.created_at)
+
+
+def test_confirmed_booking_cannot_expire():
+    booking = make_booking()
+    booking.confirm(booking.created_at)
+
+    with pytest.raises(InvalidTransitionError):
+        booking.expire()

@@ -1,24 +1,15 @@
-from datetime import date, datetime, time, timedelta
-from zoneinfo import ZoneInfo
+from datetime import date, time, timedelta
 
 from app.domain.ports import TimeRange
 from app.services.availability import AvailabilityService
+from tests.factories import NOW, RULES, SATURDAY, THURSDAY, at
 from tests.fakes import FakeCalendar, FixedClock
-from tests.test_rules import RULES
 
-LIMA = ZoneInfo("America/Lima")
-TUESDAY_9AM = datetime(2026, 11, 10, 9, 0, tzinfo=LIMA)
-THURSDAY = date(2026, 11, 12)
 FRIDAY = date(2026, 11, 13)
-SATURDAY = date(2026, 11, 14)
 MONDAY = date(2026, 11, 16)
 
 
-def at(day: date, hour: int, minute: int = 0) -> datetime:
-    return datetime(day.year, day.month, day.day, hour, minute, tzinfo=LIMA)
-
-
-def make_service(busy=None, now=TUESDAY_9AM) -> AvailabilityService:
+def make_service(busy=None, now=NOW) -> AvailabilityService:
     return AvailabilityService(FakeCalendar(busy), FixedClock(now), RULES)
 
 
@@ -76,6 +67,6 @@ def test_is_available():
 
 
 def test_past_day_starts_from_today():
-    result = make_service().find_slots(TUESDAY_9AM.date() - timedelta(days=5))
+    result = make_service().find_slots(NOW.date() - timedelta(days=5))
 
-    assert result.slots[0].date() >= TUESDAY_9AM.date()
+    assert result.slots[0].date() >= NOW.date()

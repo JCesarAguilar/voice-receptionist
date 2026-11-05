@@ -1,11 +1,8 @@
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from app.domain.ports import TimeRange
+from tests.factories import LIMA, make_booking
 from tests.fakes import FakeCalendar, InMemoryBookingRepository
-from tests.test_models import make_booking
-
-LIMA = ZoneInfo("America/Lima")
 
 
 def test_calendar_returns_only_overlapping_ranges():

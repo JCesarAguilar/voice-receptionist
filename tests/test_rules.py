@@ -1,33 +1,15 @@
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
 
 from app.domain.rules import (
     ScheduleRuleError,
-    ScheduleRules,
     candidate_slots,
     slot_end,
     validate_start,
 )
-
-LIMA = ZoneInfo("America/Lima")
-RULES = ScheduleRules(
-    timezone=LIMA,
-    opening_hour=9,
-    closing_hour=18,
-    consultation_minutes=45,
-    buffer_minutes=15,
-    min_advance_hours=2,
-    max_advance_days=30,
-)
-THURSDAY = date(2026, 11, 12)
-SATURDAY = date(2026, 11, 14)
-NOW = datetime(2026, 11, 10, 9, 0, tzinfo=LIMA)  # martes
-
-
-def at(day: date, hour: int, minute: int = 0) -> datetime:
-    return datetime(day.year, day.month, day.day, hour, minute, tzinfo=LIMA)
+from tests.factories import NOW, RULES, SATURDAY, THURSDAY, at
 
 
 def test_weekday_has_nine_slots_from_9_to_17():
