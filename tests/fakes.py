@@ -63,7 +63,7 @@ class FakePayments:
     def __init__(self) -> None:
         self.orders: dict[str, PaymentStatus] = {}
 
-    def create_order(self, booking: Booking) -> str:
+    def create_order(self, booking: Booking, email: str) -> str:
         order_id = f"ord-{len(self.orders) + 1}"
         self.orders[order_id] = PaymentStatus.PENDING
         return order_id

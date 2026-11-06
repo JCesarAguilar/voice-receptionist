@@ -40,8 +40,8 @@ class CalendarPort(Protocol):
 
 
 class PaymentPort(Protocol):
-    def create_order(self, booking: Booking) -> str:
-        """Crea la orden de pago y devuelve su id."""
+    def create_order(self, booking: Booking, email: str) -> str:
+        """Crea la orden con el email que escribió el cliente. Devuelve su id."""
         ...
 
     def get_status(self, order_id: str) -> PaymentStatus: ...

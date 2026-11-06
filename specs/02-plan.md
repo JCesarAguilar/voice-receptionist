@@ -101,7 +101,7 @@ Vapi llama a un solo endpoint, `POST /vapi/tools`, con la lista de tool calls; e
 | Tool | Entrada | Salida | Regla que cumple |
 | --- | --- | --- | --- |
 | `check_availability` | `area`, `date` (YYYY-MM-DD), `preferred_time` opcional | Hasta 3 horarios libres o el motivo por el que no hay | A2: solo horarios libres y dentro del horario de atención |
-| `create_booking` | `area`, `start` (fecha y hora ISO), `modality` (presencial o virtual), `client_name`, `client_whatsapp` (+51…), `summary` | `booking_id`, precio y "link enviado por WhatsApp" | A1, A3, A4: valida de nuevo el horario, crea el evento PENDIENTE, la orden en Culqi y envía el link |
+| `create_booking` | `area`, `start` (fecha y hora ISO), `modality` (presencial o virtual), `client_name`, `client_whatsapp` (+51…), `summary` | `booking_id`, precio y "link enviado por WhatsApp" | A1, A3, A4: valida de nuevo el horario, crea el evento PENDIENTE y envía el link (la orden de Culqi se crea después, en la página de pago) |
 | `handoff_to_human` | `reason` (urgencia, pedido del cliente, no entiende), `client_name`, `client_whatsapp`, `area` opcional, `summary` | "Aviso enviado" | A6: WhatsApp al responsable con los datos y el resumen |
 
 **Por qué `create_booking` vuelve a validar el horario:** entre la consulta y la reserva otro cliente pudo tomarlo. La regla de no reservar ocupados (A2) se garantiza en el servidor, no se confía en el LLM.
@@ -120,13 +120,15 @@ Una reserva solo tiene 3 estados y cada cambio lo dispara un evento concreto.
 
 **Flujo del pago:**
 
-1. `create_booking` guarda la reserva en `PENDING_PAYMENT` y crea el evento en el calendario.
-2. El backend crea la orden en Culqi por el precio del área.
-3. Envía por WhatsApp el link a nuestra página `/pagar/{booking_id}`.
-4. El cliente abre la página, que carga Culqi Checkout, y paga con tarjeta o Yape.
-5. Culqi avisa al webhook `/webhooks/culqi`; el backend verifica el aviso, busca la reserva y la pasa a `CONFIRMED`.
+1. `create_booking` guarda la reserva en `PENDING_PAYMENT`, crea el evento PENDIENTE en el calendario y envía por WhatsApp el link a nuestra página `/pagar/{booking_id}`. Todavía no existe orden en Culqi.
+2. El cliente abre la página y **escribe su email** (no se dicta por voz: así no hay errores de transcripción).
+3. Recién entonces el backend crea la orden en Culqi por el precio del área, con el email real del cliente (`start_payment`).
+4. La página abre Culqi Checkout y el cliente paga con tarjeta o Yape.
+5. Culqi avisa al webhook `/webhooks/culqi`; el backend consulta la orden en la API, busca la reserva y la pasa a `CONFIRMED`.
 6. El backend actualiza el evento y envía el WhatsApp de confirmación.
-7. Cada minuto, `expire_holds` pasa a `EXPIRED` las reservas pendientes con más de 30 minutos.
+7. Cada minuto, `expire_holds` pasa a `EXPIRED` las reservas pendientes con más de 30 minutos, tengan o no una orden creada.
+
+**Por qué la orden se crea en la página y no durante la llamada:** Culqi pide el email del cliente para crear la orden. Pedirlo por voz es propenso a errores, y en la página el cliente lo escribe. Además, si el cliente nunca abre el link, no queda una orden de más en Culqi.
 
 **Idempotencia:** Culqi puede enviar el mismo aviso más de una vez. Si la reserva ya está `CONFIRMED`, el webhook responde 200 y no hace nada; así el cliente no recibe dos confirmaciones.
 

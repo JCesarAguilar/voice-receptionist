@@ -1,6 +1,7 @@
 """Caso de uso: reservar, confirmar con el pago y vencer reservas sin pagar."""
 
 from datetime import datetime, timedelta
+from uuid import UUID
 
 from app.domain.models import (
     Area,
@@ -28,6 +29,10 @@ from app.services.handoff import HandoffService
 
 class SlotUnavailableError(ValueError):
     """El horario ya no está libre o no cumple las reglas."""
+
+
+class BookingNotPayableError(ValueError):
+    """La reserva no existe o ya no está pendiente de pago."""
 
 
 class BookingService:
@@ -67,7 +72,7 @@ class BookingService:
         start: datetime,
         summary: str,
     ) -> Booking:
-        """Retiene el horario, crea la orden de pago y envía el link por WhatsApp."""
+        """Retiene el horario, guarda la reserva y envía el link por WhatsApp."""
         start = start.astimezone(self._rules.timezone)
         if not self._availability.is_available(start):
             raise SlotUnavailableError("Ese horario ya no está disponible.")
@@ -83,18 +88,23 @@ class BookingService:
             created_at=self._clock.now(),
         )
         booking.calendar_event_id = self._calendar.create_hold(booking)
-        try:
-            booking.payment_order_id = self._payments.create_order(booking)
-        except Exception:
-            # Sin orden de pago no hay reserva: liberamos el horario retenido.
-            self._calendar.delete_event(booking.calendar_event_id)
-            raise
-
         self._repository.add(booking)
         link = f"{self._public_base_url}/pagar/{booking.id}"
         text = messages.payment_link_message(booking, link, self._hold_minutes)
         self._messaging.send_whatsapp(booking.client.whatsapp, text)
         return booking
+
+    def start_payment(self, booking_id: UUID, email: str) -> str:
+        """Lo llama la página de pago cuando el cliente escribe su email."""
+        booking = self._repository.get(booking_id)
+        if booking is None or booking.status != BookingStatus.PENDING_PAYMENT:
+            raise BookingNotPayableError("Esta reserva ya no se puede pagar.")
+        if booking.payment_order_id:
+            return booking.payment_order_id  # recargó la página: misma orden
+        order_id = self._payments.create_order(booking, email)
+        booking.payment_order_id = order_id
+        self._repository.update(booking)
+        return order_id
 
     def confirm_payment(self, order_id: str) -> Booking | None:
         """Lo llama el webhook de Culqi. Repetir el aviso no hace nada."""

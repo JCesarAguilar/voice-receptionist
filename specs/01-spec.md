@@ -69,6 +69,7 @@ Valores propuestos para la demo; cámbialos si prefieres otros.
 
 - Nunca da asesoría legal ni opina sobre el caso; solo informa sobre el estudio y agenda.
 - Nunca pide ni escucha datos de tarjeta: el pago se hace solo por el link.
+- No pide el email por voz: el cliente lo escribe en la página de pago, donde no hay errores de transcripción.
 - Confirma en voz alta la fecha, la hora y los datos antes de reservar.
 - Si el cliente menciona una urgencia (detención, violencia, plazo que vence hoy), deriva a una persona de inmediato.
 - Si llega un pago después de que la reserva venció, no se recupera el horario: se avisa al responsable por WhatsApp para devolver el dinero o reagendar, y al cliente se le avisa que lo contactarán.
