@@ -22,8 +22,8 @@ Todo se prueba sin internet: los servicios externos se reemplazan por fakes en m
 
 Aquí se crean las cuentas de prueba. Cada adaptador implementa su puerto; los servicios no cambian.
 
-- [ ] **T09 · Base de datos.** `adapters/sql_repository.py` con SQLModel y SQLite. _Hecho cuando:_ un test de integración guarda una reserva, la lee y cambia su estado.
-- [ ] **T10 · Google Calendar.** Cuenta de servicio con acceso al calendario del estudio; `adapters/google_calendar.py` consulta ocupados, crea, actualiza y borra eventos. _Hecho cuando:_ un script crea un evento PENDIENTE, lo pasa a CONFIRMADA y lo borra, y se ve en el calendario.
+- [x] **T09 · Base de datos.** `adapters/sql_repository.py` con SQLModel y SQLite. _Hecho cuando:_ un test de integración guarda una reserva, la lee y cambia su estado.
+- [x] **T10 · Google Calendar.** Cuenta de servicio con acceso al calendario del estudio; `adapters/google_calendar.py` consulta ocupados, crea, actualiza y borra eventos. _Hecho cuando:_ un script crea un evento PENDIENTE, lo pasa a CONFIRMADA y lo borra, y se ve en el calendario.
 - [ ] **T11 · WhatsApp.** Twilio WhatsApp Sandbox; `adapters/twilio_whatsapp.py`. _Hecho cuando:_ un script envía un mensaje de prueba a tu WhatsApp.
 - [ ] **T12 · Culqi.** Cuenta en modo integración; `adapters/culqi.py` crea y consulta órdenes. _Hecho cuando:_ un script crea una orden de S/ 120 y la consulta por su id.
 
