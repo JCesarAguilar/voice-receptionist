@@ -2,7 +2,14 @@
 
 from datetime import datetime
 
-from app.domain.models import Booking, Modality, format_soles
+from app.domain.models import (
+    Area,
+    Booking,
+    Client,
+    HandoffReason,
+    Modality,
+    format_soles,
+)
 
 DAYS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 MONTHS = [
@@ -53,4 +60,23 @@ def expired_message(booking: Booking) -> str:
         f"Hola {booking.client.name}, tu reserva del "
         f"{format_when(booking.start)} venció porque no se registró el pago. "
         "Si aún te interesa, vuelve a llamarnos."
+    )
+
+
+def handoff_message(
+    reason: HandoffReason, client: Client, summary: str, area: Area | None
+) -> str:
+    """Mensaje para el responsable del estudio."""
+    area_text = area if area else "sin definir"
+    return (
+        f"Derivación por {reason}. Cliente: {client.name}, {client.whatsapp}. "
+        f"Área: {area_text}. Resumen: {summary}"
+    )
+
+
+def late_payment_message(booking: Booking) -> str:
+    return (
+        f"Hola {booking.client.name}, recibimos tu pago, pero tu reserva del "
+        f"{format_when(booking.start)} ya había vencido. "
+        "El estudio te contactará para reagendar o devolverte el dinero."
     )

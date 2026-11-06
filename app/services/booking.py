@@ -7,7 +7,9 @@ from app.domain.models import (
     Booking,
     BookingStatus,
     Client,
+    HandoffReason,
     Modality,
+    format_soles,
     price_for,
 )
 from app.domain.ports import (
@@ -21,6 +23,7 @@ from app.domain.ports import (
 from app.domain.rules import ScheduleRules, slot_end
 from app.services import messages
 from app.services.availability import AvailabilityService
+from app.services.handoff import HandoffService
 
 
 class SlotUnavailableError(ValueError):
@@ -37,6 +40,7 @@ class BookingService:
         messaging: MessagingPort,
         clock: Clock,
         availability: AvailabilityService,
+        handoff: HandoffService,
         rules: ScheduleRules,
         hold_minutes: int,
         public_base_url: str,
@@ -48,6 +52,7 @@ class BookingService:
         self._messaging = messaging
         self._clock = clock
         self._availability = availability
+        self._handoff = handoff
         self._rules = rules
         self._hold_minutes = hold_minutes
         self._public_base_url = public_base_url.rstrip("/")
@@ -96,10 +101,13 @@ class BookingService:
         booking = self._repository.get_by_order_id(order_id)
         if booking is None:
             return None
-        if booking.status != BookingStatus.PENDING_PAYMENT:
-            return booking  # ya confirmada o vencida: idempotencia
+        if booking.status == BookingStatus.CONFIRMED:
+            return booking  # ya confirmada: idempotencia
         if not self._is_paid(order_id):
             return booking  # no confiamos en el aviso: preguntamos a Culqi
+        if booking.status == BookingStatus.EXPIRED:
+            self._handle_late_payment(booking)
+            return booking
         self._confirm(booking)
         return booking
 
@@ -129,4 +137,20 @@ class BookingService:
             self._calendar.mark_confirmed(booking.calendar_event_id, booking)
         self._repository.update(booking)
         text = messages.confirmation_message(booking, self._office_address)
+        self._messaging.send_whatsapp(booking.client.whatsapp, text)
+
+    def _handle_late_payment(self, booking: Booking) -> None:
+        """Pagó después de vencer: el horario no vuelve, avisamos a una persona."""
+        if not booking.register_late_payment(self._clock.now()):
+            return  # ya avisado antes
+        self._repository.update(booking)
+        when = messages.format_when(booking.start)
+        price = format_soles(booking.price_cents)
+        self._handoff.notify(
+            reason=HandoffReason.LATE_PAYMENT,
+            client=booking.client,
+            area=booking.area,
+            summary=f"Pagó {price} tarde; su reserva del {when} había vencido.",
+        )
+        text = messages.late_payment_message(booking)
         self._messaging.send_whatsapp(booking.client.whatsapp, text)

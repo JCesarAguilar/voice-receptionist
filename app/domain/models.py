@@ -26,6 +26,13 @@ class BookingStatus(StrEnum):
     EXPIRED = "expired"
 
 
+class HandoffReason(StrEnum):
+    URGENT = "urgencia"
+    CLIENT_REQUEST = "pedido del cliente"
+    NOT_UNDERSTOOD = "no se entendió la consulta"
+    LATE_PAYMENT = "pago tardío"
+
+
 # Precios en céntimos (S/ 150.00 = 15000): el dinero nunca se guarda con decimales.
 PRICES_CENTS: dict[Area, int] = {
     Area.CIVIL: 15000,
@@ -90,6 +97,7 @@ class Booking(BaseModel):
     calendar_event_id: str | None = None
     payment_order_id: str | None = None
     confirmed_at: datetime | None = None
+    late_payment_at: datetime | None = None
 
     @field_validator("start", "end", "created_at")
     @classmethod
@@ -117,3 +125,12 @@ class Booking(BaseModel):
         if self.status != BookingStatus.PENDING_PAYMENT:
             raise InvalidTransitionError("Solo vence una reserva pendiente.")
         self.status = BookingStatus.EXPIRED
+
+    def register_late_payment(self, at: datetime) -> bool:
+        """Anota un pago que llegó tarde. Devuelve False si ya estaba anotado."""
+        if self.status != BookingStatus.EXPIRED:
+            raise InvalidTransitionError("Solo hay pago tardío si la reserva venció.")
+        if self.late_payment_at is not None:
+            return False
+        self.late_payment_at = at
+        return True

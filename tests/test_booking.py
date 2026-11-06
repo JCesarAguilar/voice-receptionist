@@ -7,6 +7,7 @@ from app.domain.models import Area, Booking, BookingStatus, Modality
 from app.domain.ports import PaymentPort, PaymentStatus, TimeRange
 from app.services.availability import AvailabilityService
 from app.services.booking import BookingService, SlotUnavailableError
+from app.services.handoff import HandoffService
 from tests.factories import NOW, RULES, THURSDAY, at, make_client
 from tests.fakes import (
     FakeCalendar,
@@ -16,6 +17,8 @@ from tests.fakes import (
     FixedClock,
     InMemoryBookingRepository,
 )
+
+STAFF = "+51900000000"
 
 
 @dataclass
@@ -45,6 +48,7 @@ def make_env(busy=None, payments: PaymentPort | None = None) -> Env:
         messaging=messaging,
         clock=clock,
         availability=availability,
+        handoff=HandoffService(messaging, STAFF),
         rules=RULES,
         hold_minutes=30,
         public_base_url="https://demo.test",
@@ -205,3 +209,20 @@ def test_failed_payment_order_releases_the_held_slot():
 
     assert env.calendar.events == {}
     assert env.availability.is_available(at(THURSDAY, 10))
+
+
+def test_e14_late_payment_notifies_staff_and_client_once():
+    env = make_env()
+    booking = book(env)
+    env.clock.advance(timedelta(minutes=31))
+    env.service.expire_overdue()
+    env.payments.mark_paid(order_id(booking))
+
+    env.service.confirm_payment(order_id(booking))
+    env.service.confirm_payment(order_id(booking))  # Culqi avisa otra vez
+
+    assert stored(env, booking).status == BookingStatus.EXPIRED
+    staff_texts = [text for to, text in env.messaging.sent if to == STAFF]
+    assert len(staff_texts) == 1
+    assert "pago tardío" in staff_texts[0]
+    assert "recibimos tu pago" in env.messaging.sent[-1][1]

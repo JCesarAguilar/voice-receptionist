@@ -11,7 +11,7 @@ from app.domain.models import (
     format_soles,
     price_for,
 )
-from tests.factories import LIMA, make_booking
+from tests.factories import LIMA, NOW, make_booking
 
 
 @pytest.mark.parametrize(
@@ -85,3 +85,16 @@ def test_confirmed_booking_cannot_expire():
 
     with pytest.raises(InvalidTransitionError):
         booking.expire()
+
+
+def test_late_payment_is_registered_only_once():
+    booking = make_booking()
+    booking.expire()
+
+    assert booking.register_late_payment(NOW) is True
+    assert booking.register_late_payment(NOW) is False
+
+
+def test_late_payment_requires_expired_booking():
+    with pytest.raises(InvalidTransitionError):
+        make_booking().register_late_payment(NOW)

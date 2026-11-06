@@ -15,8 +15,8 @@ Todo se prueba sin internet: los servicios externos se reemplazan por fakes en m
 - [x] **T04 · Reglas de horario.** `domain/rules.py`: horario de atención, duración de 45 + 15 min, anticipación mínima de 2 h y máxima de 30 días, y generación de horarios posibles de un día. _Hecho cuando:_ tests cubren sábado (cerrado), un horario dentro de 1 h (rechazado) y un día normal (lista correcta de horarios).
 - [x] **T05 · Puertos.** `domain/ports.py` con `CalendarPort`, `PaymentPort`, `MessagingPort` y `BookingRepository` como `Protocol`. _Hecho cuando:_ existen fakes en `tests/fakes.py` que los implementan y el verificador de tipos no marca errores.
 - [x] **T06 · Servicio de disponibilidad.** `services/availability.py`: cruza los horarios posibles con los ocupados del calendario y devuelve hasta 3, empezando por el más cercano al pedido. _Hecho cuando:_ tests reproducen E2 (ocupado → alternativas) y E3 (sábado → propone lunes).
-- [ ] **T07 · Servicio de reservas.** `services/booking.py`: crear (revalida el horario, evento PENDIENTE, orden, WhatsApp), confirmar (idempotente) y expirar. _Hecho cuando:_ tests cubren E10 (expira a los 30 min), E11 (confirma y envía WhatsApp), doble confirmación (un solo WhatsApp) y horario tomado entre consulta y reserva (rechaza).
-- [ ] **T08 · Servicio de derivación.** `services/handoff.py`: arma el mensaje con nombre, número, área, motivo y resumen y lo envía al responsable. _Hecho cuando:_ un test verifica el texto exacto que recibe el fake de mensajería.
+- [x] **T07 · Servicio de reservas.** `services/booking.py`: crear (revalida el horario, evento PENDIENTE, orden, WhatsApp), confirmar (idempotente) y expirar. _Hecho cuando:_ tests cubren E10 (expira a los 30 min), E11 (confirma y envía WhatsApp), doble confirmación (un solo WhatsApp) y horario tomado entre consulta y reserva (rechaza).
+- [x] **T08 · Servicio de derivación.** `services/handoff.py`: arma el mensaje con nombre, número, área, motivo y resumen y lo envía al responsable. _Hecho cuando:_ un test verifica el texto exacto que recibe el fake de mensajería.
 
 ## Fase 2 — Adaptadores reales
 
