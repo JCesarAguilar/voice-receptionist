@@ -53,7 +53,8 @@ def main() -> None:
     input("3. Pasó a CONFIRMADA (verde). Míralo y presiona Enter para borrarlo... ")
 
     calendar.delete_event(event_id)
-    print(f"4. Borrado. El turno está: {show(calendar.busy_ranges(start, booking.end))}")
+    after = show(calendar.busy_ranges(start, booking.end))
+    print(f"4. Borrado. El turno está: {after}")
 
     calendar.delete_event(event_id)
     print("5. Borrarlo otra vez no falla (idempotencia). ¡Listo!")
