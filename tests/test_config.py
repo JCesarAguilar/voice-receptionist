@@ -53,3 +53,10 @@ def test_database_defaults_to_local_sqlite(valid_env):
     settings = Settings(_env_file=None)  # type: ignore[call-arg]
 
     assert settings.database_url == "sqlite:///receptionist.db"
+
+
+def test_rejects_culqi_live_key(valid_env, monkeypatch):
+    monkeypatch.setenv("CULQI_SECRET_KEY", "sk_live_real")
+
+    with pytest.raises(ValidationError, match="llaves de prueba"):
+        Settings(_env_file=None)  # type: ignore[call-arg]

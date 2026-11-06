@@ -3,7 +3,7 @@
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.domain.rules import ScheduleRules
@@ -44,6 +44,14 @@ class Settings(BaseSettings):
     max_advance_days: int = Field(default=30, gt=0)
     payment_hold_minutes: int = Field(default=30, gt=0)
     max_slot_options: int = Field(default=3, gt=0)
+
+    @field_validator("culqi_secret_key")
+    @classmethod
+    def no_live_keys(cls, value: SecretStr) -> SecretStr:
+        """En desarrollo solo se aceptan llaves de prueba de Culqi."""
+        if value.get_secret_value().startswith("sk_live_"):
+            raise ValueError("Este proyecto solo acepta llaves de prueba (sk_test_).")
+        return value
 
 
 @lru_cache

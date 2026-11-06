@@ -24,8 +24,8 @@ Aquí se crean las cuentas de prueba. Cada adaptador implementa su puerto; los s
 
 - [x] **T09 · Base de datos.** `adapters/sql_repository.py` con SQLModel y SQLite. _Hecho cuando:_ un test de integración guarda una reserva, la lee y cambia su estado.
 - [x] **T10 · Google Calendar.** Cuenta de servicio con acceso al calendario del estudio; `adapters/google_calendar.py` consulta ocupados, crea, actualiza y borra eventos. _Hecho cuando:_ un script crea un evento PENDIENTE, lo pasa a CONFIRMADA y lo borra, y se ve en el calendario.
-- [ ] **T11 · WhatsApp.** Twilio WhatsApp Sandbox; `adapters/twilio_whatsapp.py`. _Hecho cuando:_ un script envía un mensaje de prueba a tu WhatsApp.
-- [ ] **T12 · Culqi.** Cuenta en modo integración; el puerto `PaymentPort.create_order` recibe el email del cliente; `BookingService.create` ya no crea la orden y se agrega `start_payment(booking_id, email)`; `adapters/culqi.py` crea y consulta órdenes. _Hecho cuando:_ los tests pasan con el flujo nuevo y un script crea una orden de S/ 120 y la consulta por su id.
+- [x] **T11 · WhatsApp.** Twilio WhatsApp Sandbox; `adapters/twilio_whatsapp.py`. _Hecho cuando:_ un script envía un mensaje de prueba a tu WhatsApp.
+- [x] **T12 · Culqi.** Cuenta en modo integración; el puerto `PaymentPort.create_order` recibe el email del cliente; `BookingService.create` ya no crea la orden y se agrega `start_payment(booking_id, email)`; `adapters/culqi.py` crea y consulta órdenes. _Hecho cuando:_ los tests pasan con el flujo nuevo y un script crea una orden de S/ 120 y la consulta por su id.
 
 ## Fase 3 — API, pagos y webhooks
 

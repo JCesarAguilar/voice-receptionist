@@ -24,3 +24,4 @@ sqlmodel==0.0.48
 google-api-python-client==2.201.0
 google-auth==2.62.1
 twilio==9.13.0
+httpx2==2.16.0
