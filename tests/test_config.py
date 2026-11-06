@@ -47,3 +47,9 @@ def test_missing_key_names_the_field(valid_env, monkeypatch):
         Settings(_env_file=None)  # type: ignore[call-arg]
 
     assert "culqi_secret_key" in str(error.value)
+
+
+def test_database_defaults_to_local_sqlite(valid_env):
+    settings = Settings(_env_file=None)  # type: ignore[call-arg]
+
+    assert settings.database_url == "sqlite:///receptionist.db"

@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     langfuse_secret_key: SecretStr
     langfuse_base_url: str = "https://cloud.langfuse.com"
     public_base_url: str
+    database_url: str = "sqlite:///receptionist.db"
 
     # --- Reglas de negocio (Spec, sección 5) ---
     timezone: str = "America/Lima"
