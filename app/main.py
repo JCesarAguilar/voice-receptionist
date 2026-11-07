@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from app.api.payment_page import router as page_router
 from app.api.payments import router as payments_router
 from app.api.vapi_tools import router as vapi_router
+from app.api.webhooks import router as webhooks_router
 from app.config import get_settings
 
 
@@ -22,6 +23,7 @@ app = FastAPI(title="Recepcionista de voz - Estudio Lex Andina", lifespan=lifesp
 app.include_router(vapi_router)
 app.include_router(payments_router)
 app.include_router(page_router)
+app.include_router(webhooks_router)
 
 
 @app.get("/health")
