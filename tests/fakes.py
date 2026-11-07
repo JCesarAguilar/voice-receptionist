@@ -60,8 +60,10 @@ class FakeCalendar:
 
 
 class FakePayments:
-    def __init__(self) -> None:
+    def __init__(self, approve_charges: bool = True) -> None:
         self.orders: dict[str, PaymentStatus] = {}
+        self.charges: list[str] = []
+        self.approve_charges = approve_charges
 
     def create_order(self, booking: Booking, email: str) -> str:
         order_id = f"ord-{len(self.orders) + 1}"
@@ -74,6 +76,11 @@ class FakePayments:
     def mark_paid(self, order_id: str) -> None:
         """Simula que el cliente pagó (en producción lo avisa Culqi)."""
         self.orders[order_id] = PaymentStatus.PAID
+
+    def charge(self, booking: Booking, token_id: str, email: str) -> bool:
+        if self.approve_charges:
+            self.charges.append(token_id)
+        return self.approve_charges
 
 
 class FakeMessaging:

@@ -106,6 +106,16 @@ class BookingService:
         self._repository.update(booking)
         return order_id
 
+    def pay_with_token(self, booking_id: UUID, token_id: str, email: str) -> bool:
+        """Lo llama la página cuando Culqi devuelve un token de tarjeta o Yape."""
+        booking = self._repository.get(booking_id)
+        if booking is None or booking.status != BookingStatus.PENDING_PAYMENT:
+            raise BookingNotPayableError("Esta reserva ya no se puede pagar.")
+        if not self._payments.charge(booking, token_id, email):
+            return False  # tarjeta rechazada: la reserva sigue pendiente
+        self._confirm(booking)
+        return True
+
     def confirm_payment(self, order_id: str) -> Booking | None:
         """Lo llama el webhook de Culqi. Repetir el aviso no hace nada."""
         booking = self._repository.get_by_order_id(order_id)

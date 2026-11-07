@@ -8,6 +8,7 @@ from app.domain.models import Booking
 from app.domain.ports import PaymentStatus
 
 CULQI_API = "https://api.culqi.com/v2"
+CARD_DECLINED = 402  # Culqi responde 402 cuando el banco rechaza la tarjeta
 # Estados de una orden en Culqi (verificado en integración: confirm=False -> created)
 STATES = {
     "created": PaymentStatus.PENDING,
@@ -29,12 +30,17 @@ class CulqiPayments:
     """Cumple el puerto PaymentPort usando la API de órdenes de Culqi."""
 
     def __init__(
-        self, secret_key: str, hold_minutes: int, timeout_seconds: float = 15.0
+        self,
+        secret_key: str,
+        hold_minutes: int,
+        timeout_seconds: float = 15.0,
+        transport: httpx2.BaseTransport | None = None,
     ) -> None:
         self._http = httpx2.Client(
             base_url=CULQI_API,
             headers={"Authorization": f"Bearer {secret_key}"},
             timeout=timeout_seconds,
+            transport=transport,
         )
         self._hold_minutes = hold_minutes
 
@@ -63,6 +69,21 @@ class CulqiPayments:
         response = self._http.get(f"/orders/{order_id}")
         self._check(response)
         return to_payment_status(response.json().get("state"))
+
+    def charge(self, booking: Booking, token_id: str, email: str) -> bool:
+        payload = {
+            "amount": booking.price_cents,
+            "currency_code": "PEN",
+            "email": email,
+            "source_id": token_id,
+            "description": f"Consulta {booking.area} - Estudio Lex Andina",
+            "metadata": {"booking_id": str(booking.id)},
+        }
+        response = self._http.post("/charges", json=payload)
+        if response.status_code == CARD_DECLINED:
+            return False  # tarjeta rechazada: no es una falla del sistema
+        self._check(response)
+        return response.json().get("object") == "charge"
 
     @staticmethod
     def _check(response: httpx2.Response) -> None:

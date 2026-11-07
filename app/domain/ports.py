@@ -46,6 +46,10 @@ class PaymentPort(Protocol):
 
     def get_status(self, order_id: str) -> PaymentStatus: ...
 
+    def charge(self, booking: Booking, token_id: str, email: str) -> bool:
+        """Cobra con el token de tarjeta o Yape. True si el cobro se aprobó."""
+        ...
+
 
 class MessagingPort(Protocol):
     def send_whatsapp(self, to: str, text: str) -> None:

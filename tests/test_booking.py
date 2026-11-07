@@ -289,3 +289,39 @@ def test_e14_late_payment_notifies_staff_and_client_once():
     assert len(staff_texts) == 1
     assert "pago tardío" in staff_texts[0]
     assert "recibimos tu pago" in env.messaging.sent[-1][1]
+
+
+# --- Pagar con token (tarjeta o Yape) ---
+
+
+def test_token_payment_confirms_the_booking():
+    env = make_env()
+    booking = book(env)
+
+    paid = env.service.pay_with_token(booking.id, "tkn_test_1", EMAIL)
+
+    assert paid is True
+    assert stored(env, booking).status == BookingStatus.CONFIRMED
+    assert env.payments.charges == ["tkn_test_1"]
+    assert "confirmada" in env.messaging.sent[-1][1]
+
+
+def test_rejected_card_keeps_the_booking_pending():
+    env = make_env(payments=FakePayments(approve_charges=False))
+    booking = book(env)
+
+    paid = env.service.pay_with_token(booking.id, "tkn_test_1", EMAIL)
+
+    assert paid is False
+    assert stored(env, booking).status == BookingStatus.PENDING_PAYMENT
+
+
+def test_paid_booking_cannot_be_charged_twice():
+    env = make_env()
+    booking = book(env)
+    env.service.pay_with_token(booking.id, "tkn_test_1", EMAIL)
+
+    with pytest.raises(BookingNotPayableError):
+        env.service.pay_with_token(booking.id, "tkn_test_2", EMAIL)
+
+    assert env.payments.charges == ["tkn_test_1"]
