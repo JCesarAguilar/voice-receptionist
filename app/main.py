@@ -1,6 +1,6 @@
 """Punto de entrada de la API de la recepcionista de voz."""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -10,13 +10,17 @@ from app.api.payments import router as payments_router
 from app.api.vapi_tools import router as vapi_router
 from app.api.webhooks import router as webhooks_router
 from app.config import get_settings
+from app.container import get_booking_service
+from app.jobs.expire_holds import start_scheduler
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Se ejecuta al arrancar: si falta una clave, la app no levanta."""
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    """Al arrancar: valida la config y prende el job; al apagar, lo detiene."""
     get_settings()
+    scheduler = start_scheduler(get_booking_service)
     yield
+    scheduler.shutdown(wait=False)
 
 
 app = FastAPI(title="Recepcionista de voz - Estudio Lex Andina", lifespan=lifespan)
