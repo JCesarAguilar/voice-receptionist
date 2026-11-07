@@ -33,7 +33,7 @@ Aquí se crean las cuentas de prueba. Cada adaptador implementa su puerto; los s
 - [x] **T14 · Página de pago.** `GET /pagar/{booking_id}` con `templates/pagar.html`: el cliente escribe su email, se llama a `start_payment` y se abre Culqi Checkout; `POST /payments/charge` para tarjeta. _Hecho cuando:_ pagas con una tarjeta de prueba de Culqi desde el navegador y la reserva queda `CONFIRMED`.
 - [x] **T15 · Webhook de Culqi.** `POST /webhooks/culqi`: verifica la orden en la API y confirma de forma idempotente. _Hecho cuando_: los tests prueban que una orden pagada confirma la reserva, que repetir el aviso no envía un segundo WhatsApp y que un aviso falso no confirma nada. La prueba real con PagoEfectivo se hace en la T17, con ngrok.
 - [x] **T16 · Expiración automática.** `jobs/expire_holds.py` con APScheduler cada minuto. _Hecho cuando:_ una reserva sin pagar pasa a `EXPIRED`, su evento desaparece del calendario y el cliente recibe el aviso.
-- [ ] **T17 · ngrok.** URL pública hacia el backend local para Vapi y Culqi. _Hecho cuando:_ `GET https://<tu-url>/health` responde desde fuera.
+- [x] **T17 · ngrok.** URL pública hacia el backend local para Vapi y Culqi. _Hecho cuando:_ `GET https://<tu-url>/health` responde desde fuera.
 
 ## Fase 4 — Agente de voz
 
