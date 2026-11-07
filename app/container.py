@@ -73,3 +73,8 @@ def get_container() -> Container:
 def get_tool_dispatcher() -> ToolDispatcher:
     """Dependencia de FastAPI para el endpoint /vapi/tools."""
     return get_container().dispatcher
+
+
+def get_booking_service() -> BookingService:
+    """Dependencia de FastAPI para las rutas de la página de pago."""
+    return get_container().booking

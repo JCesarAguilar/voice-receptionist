@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.payment_page import router as page_router
+from app.api.payments import router as payments_router
 from app.api.vapi_tools import router as vapi_router
 from app.config import get_settings
 
@@ -18,6 +20,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="Recepcionista de voz - Estudio Lex Andina", lifespan=lifespan)
 app.include_router(vapi_router)
+app.include_router(payments_router)
+app.include_router(page_router)
 
 
 @app.get("/health")

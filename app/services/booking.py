@@ -94,6 +94,10 @@ class BookingService:
         self._messaging.send_whatsapp(booking.client.whatsapp, text)
         return booking
 
+    def find(self, booking_id: UUID) -> Booking | None:
+        """Lo usa la página de pago para mostrar el resumen de la reserva."""
+        return self._repository.get(booking_id)
+
     def start_payment(self, booking_id: UUID, email: str) -> str:
         """Lo llama la página de pago cuando el cliente escribe su email."""
         booking = self._repository.get(booking_id)

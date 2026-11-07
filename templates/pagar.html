@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pagar consulta · Estudio Lex Andina</title>
+    <style>
+      :root {
+        --ink: #1f2933;
+        --muted: #6b7280;
+        --brand: #1e3a5f;
+        --ok: #15803d;
+        --bad: #b91c1c;
+        --bg: #f5f5f0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+      }
+      main {
+        max-width: 420px;
+        margin: 0 auto;
+        padding: 32px 16px;
+      }
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin: 0 0 4px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin: 0 0 20px;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 8px 16px;
+        margin: 0 0 24px;
+      }
+      dt {
+        color: var(--muted);
+      }
+      dd {
+        margin: 0;
+        font-weight: 600;
+      }
+      label {
+        display: block;
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+      }
+      input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 1rem;
+      }
+      button {
+        width: 100%;
+        margin-top: 16px;
+        padding: 14px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--brand);
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+      #status {
+        margin-top: 16px;
+        min-height: 1.5em;
+      }
+      .ok {
+        color: var(--ok);
+      }
+      .bad {
+        color: var(--bad);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="card">
+        <h1>Estudio Lex Andina</h1>
+        <p class="muted">Consulta legal · pago seguro con Culqi</p>
+        <dl>
+          <dt>Área</dt>
+          <dd>{{ area }}</dd>
+          <dt>Fecha</dt>
+          <dd>{{ when }}</dd>
+          <dt>Modalidad</dt>
+          <dd>{{ modality }}</dd>
+          <dt>Total</dt>
+          <dd>{{ price }}</dd>
+        </dl>
+
+        {% if status == "pending_payment" %}
+        <form id="pay-form">
+          <label for="email">Tu email (ahí llega el comprobante)</label>
+          <input
+            id="email"
+            type="email"
+            required
+            autocomplete="email"
+            placeholder="tu@email.com"
+          />
+          <button id="pay-btn" type="submit">Pagar {{ price }}</button>
+        </form>
+        <p id="status" role="status"></p>
+        {% elif status == "confirmed" %}
+        <p class="ok">
+          Esta consulta ya está pagada y confirmada. ¡Te esperamos!
+        </p>
+        {% else %}
+        <p class="bad">
+          El tiempo para pagar esta reserva venció. Llámanos para agendar otro
+          horario.
+        </p>
+        {% endif %}
+      </div>
+    </main>
+
+    {% if status == "pending_payment" %}
+    <script id="pay-config" type="application/json">
+      {{ {"bookingId": booking_id, "publicKey": public_key, "amount": amount_cents} | tojson }}
+    </script>
+    <script src="https://js.culqi.com/checkout-js"></script>
+    <script>
+      const CONFIG = JSON.parse(
+        document.getElementById("pay-config").textContent,
+      );
+      const BOOKING_ID = CONFIG.bookingId;
+      const PUBLIC_KEY = CONFIG.publicKey;
+      const AMOUNT = CONFIG.amount;
+
+      const form = document.getElementById("pay-form");
+      const button = document.getElementById("pay-btn");
+      const statusBox = document.getElementById("status");
+      let culqi = null;
+      let email = "";
+
+      function show(text, kind) {
+        statusBox.textContent = text;
+        statusBox.className = kind || "";
+      }
+
+      async function post(path, body) {
+        const response = await fetch(`/payments/${BOOKING_ID}/${path}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          const detail = typeof data.detail === "string" ? data.detail : null;
+          throw new Error(detail || "Revisa tu email e inténtalo de nuevo.");
+        }
+        return data;
+      }
+
+      // Culqi llama a esta función cuando el cliente termina en el checkout.
+      async function onCulqiResult() {
+        if (culqi.token) {
+          // Tarjeta o Yape: el token va al backend, que crea el cargo.
+          culqi.close();
+          show("Procesando el pago…");
+          try {
+            const { paid } = await post("charge", {
+              token_id: culqi.token.id,
+              email,
+            });
+            if (paid) {
+              form.remove();
+              show(
+                "¡Pago aprobado! Te enviamos la confirmación por WhatsApp.",
+                "ok",
+              );
+            } else {
+              show("El banco rechazó el pago. Prueba con otra tarjeta.", "bad");
+            }
+          } catch (error) {
+            show(error.message, "bad");
+          }
+        } else if (culqi.order) {
+          // PagoEfectivo o billetera: se confirma luego por webhook (T15).
+          culqi.close();
+          form.remove();
+          show(
+            "Recibimos tu solicitud. Al completarse el pago te confirmamos " +
+              "por WhatsApp.",
+            "ok",
+          );
+        } else if (culqi.error) {
+          show(
+            culqi.error.user_message || "No se pudo completar el pago.",
+            "bad",
+          );
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        email = document.getElementById("email").value.trim();
+        button.disabled = true;
+        show("");
+        try {
+          const { order_id } = await post("order", { email });
+          culqi = new CulqiCheckout(PUBLIC_KEY, {
+            settings: {
+              title: "Estudio Lex Andina",
+              currency: "PEN",
+              amount: AMOUNT,
+              order: order_id,
+            },
+            client: { email },
+            options: {
+              lang: "es",
+              installments: false,
+              modal: true,
+              paymentMethods: {
+                tarjeta: true,
+                yape: true,
+                billetera: true,
+                bancaMovil: true,
+                agente: true,
+                cuotealo: false,
+              },
+              paymentMethodsSort: [
+                "tarjeta",
+                "yape",
+                "billetera",
+                "bancaMovil",
+                "agente",
+              ],
+            },
+            appearance: {
+              menuType: "sidebar",
+              buttonCardPayText: "Pagar",
+              defaultStyle: {
+                bannerColor: "#1e3a5f",
+                buttonBackground: "#1e3a5f",
+              },
+            },
+          });
+          culqi.culqi = onCulqiResult;
+          culqi.open();
+        } catch (error) {
+          show(error.message, "bad");
+        } finally {
+          button.disabled = false;
+        }
+      });
+    </script>
+    {% endif %}
+  </body>
+</html>
