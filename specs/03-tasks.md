@@ -44,7 +44,7 @@ Aquí se crean las cuentas de prueba. Cada adaptador implementa su puerto; los s
 
 ## Fase 5 — Evaluación y entrega
 
-- [ ] **T22 · Golden cases.** Correr E1–E13 por voz y registrar el resultado de cada uno en `specs/evaluacion.md` contra A1–A10, con la latencia promedio, el WER y la precisión de entidades críticas. _Hecho cuando:_ la tabla está completa y cada criterio fallido tiene una causa anotada.
+- [x] **T22 · Golden cases.** Correr E1–E13 por voz y registrar el resultado de cada uno en `specs/evaluacion.md` contra A1–A10, con la latencia promedio, el WER y la precisión de entidades críticas. _Hecho cuando:_ la tabla está completa y cada criterio fallido tiene una causa anotada.
 - [ ] **T23 · Iterar y entregar.** Ajustar el prompt o las tools hasta cumplir A1–A10; README con diagrama, decisiones, setup, resultados y limitaciones; video de 1 minuto de una llamada real. _Hecho cuando:_ todos los criterios están en verde, el repo es público y el video está en el README.
 
 Opcional después de la v1: desplegar el backend en Render o Railway, recordatorios 24 h antes, reprogramar y cancelar por voz, y pasar a la API oficial de WhatsApp.

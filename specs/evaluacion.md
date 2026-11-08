@@ -5,7 +5,7 @@ Etapa de verificación de SDD: cada escenario de la Spec (sección 7) se corrió
 **Configuración evaluada:** modelo gpt-4o-mini (temperatura 0.3) · ASR Deepgram nova-2 en español · voz Azure es-PE-CamilaNeural · prompt `assistant/system_prompt.md` y `assistant/tools.json` (versión final: v1.3)
 **Fecha:** 2026-11-08
 
-**Resultado:** 13 de 13 escenarios cumplen. La evaluación encontró 6 problemas; se corrigieron en tres iteraciones del prompt y el backend (v1.1, v1.2 y v1.3) y se volvieron a probar.
+**Resultado:** 13 de 13 escenarios cumplen y 8 de 10 criterios de aceptación están en verde. Quedan dos pendientes: la latencia (A8: 1,8 s contra una meta de 1,5 s) y un nombre mal transcrito en una reserva (A3: 4 de 5, ya ajustado en el prompt). La evaluación encontró 6 problemas; se corrigieron en tres iteraciones del prompt y el backend (v1.1, v1.2 y v1.3) y se volvieron a probar.
 
 ## 1. Escenarios
 
@@ -38,7 +38,7 @@ E14 (pago tardío) se verifica con los tests automáticos del flujo de pago (`te
 | A5  | Nunca da asesoría legal                       | 100%    | ✅ 100%   | E7, también al insistir                                                    |
 | A6  | Deriva en urgencias o si lo piden             | 100%    | ✅ 100%   | E8, E9                                                                     |
 | A7  | Preguntas frecuentes correctas                | 9 de 10 | ✅ 2 de 2 | E5, E6                                                                     |
-| A8  | Tiempo de respuesta percibido                 | < 1,5 s | Pendiente | Logs de llamadas de Vapi                                                   |
+| A8  | Tiempo de respuesta percibido | < 1,5 s | ❌ 1,8 s | Promedio por turno de 20 llamadas según Vapi (mediana 1,75 s). El backend no es la causa: las tools responden en 0,48 s y corren en paralelo a la frase "Déjame revisar la agenda". La espera está en detectar el fin del turno, el LLM y la voz |
 | A9  | Cada llamada queda registrada                 | 100%    | ✅ 100%   | Tabla `calls` + sesiones en Langfuse                                       |
 | A10 | WhatsApp capturado exacto                     | 100%    | ✅ 100%   | El backend rechaza todo número mal formado; nunca se guardó uno incorrecto |
 
@@ -46,12 +46,19 @@ E14 (pago tardío) se verifica con los tests automáticos del flujo de pago (`te
 
 ## 3. Métricas
 
-| Métrica                         | Valor     | Cómo se calculó                                                          |
-| ------------------------------- | --------- | ------------------------------------------------------------------------ |
-| Latencia promedio de respuesta  | Pendiente | Logs de llamadas de Vapi                                                 |
-| Latencia de las tools (backend) | Pendiente | `latency_ms` en Langfuse                                                 |
-| WER del reconocimiento de voz   | Pendiente | `scripts/eval_metrics.py` con frases de referencia                       |
-| Costo promedio por llamada      | Pendiente | `avg(cost_usd)` de la tabla `calls` (una llamada de 34 s costó US$ 0,04) |
+Calculadas sobre las 14 llamadas de la evaluación, guardadas en la tabla `calls`.
+
+| Métrica | Valor | Cómo se calculó |
+| --- | --- | --- |
+| Latencia promedio de respuesta | **1,81 s** por turno (mediana 1,75 s, máximo 3,37 s; 20 llamadas) | `turnLatencyAverage` de cada llamada en la API de Vapi (`scripts/latency_report.py`) |
+| Latencia de las tools (backend) | **478 ms** (mediana 449 ms, máximo 629 ms; 7 tool calls) | `latency_ms` de los spans en la API de Langfuse (`scripts/latency_report.py`); cumple la meta del Plan de menos de 500 ms en promedio |
+| WER del reconocimiento de voz | **8,0 %** (7 errores en 87 palabras) | 13 frases de los escenarios comparadas con lo que transcribió el ASR (`scripts/eval_metrics.py`) |
+| Precisión del número de WhatsApp | **100 %** (6 de 6) | 2 reservas y 4 derivaciones por voz llegaron con el número exacto |
+| Precisión del nombre | 1 de 2 reservas exacto | Una reserva quedó como "César Aguilar Vera" (el ASR entendió "Cuyo" por "Julio") |
+| Duración promedio por llamada | 59 s | `avg(duration_seconds)` de la tabla `calls` |
+| Costo promedio por llamada | **US$ 0,065** (US$ 0,92 las 14 llamadas) | `avg(cost_usd)` de la tabla `calls`; unos US$ 0,07 por minuto |
+
+**Lectura del WER:** 5 de los 7 errores están en las **primeras palabras** de la frase ("Mi hijo" perdido dos veces, "Quiero" → "Tiene", "Ven" → "En", "Me" omitido). El problema no es el modelo de transcripción en general: el ASR corta el inicio cuando el cliente empieza a hablar justo después de Lucía. Por eso el ajuste de la v2 es en el tiempo de espera de Vapi, no un cambio de proveedor.
 
 ## 4. Hallazgos y ajustes
 
@@ -63,6 +70,7 @@ E14 (pago tardío) se verifica con los tests automáticos del flujo de pago (`te
 | El refuerzo de keywords hacía "oír" la palabra donde no estaba ("Lex correcto", "Andina,") | E9, E12         | Se quitaron los nombres propios de los keywords                               | ✅ v1.2      |
 | La derivación salía sin área y sin decir quién estaba afectado                             | E8              | La regla pasó del prompt a la descripción de los parámetros de la tool        | ✅ v1.3      |
 | El ASR entendió "Cuyo" en vez de "Julio"                                                   | Reserva por voz | El prompt pide repetir un nombre que no suena a nombre de persona             | ✅ v1.1      |
+| La latencia por turno es 1,8 s, sobre la meta de 1,5 s | A8 | Bajar la espera de fin de turno (endpointing) en Vapi, probar smart endpointing y una voz más rápida; medir cada cambio con `scripts/latency_report.py` | Pendiente v2 |
 | El ASR a veces corta las primeras palabras del cliente                                     | E8              | Ajustar en Vapi cuánto espera antes de escuchar                               | Pendiente v2 |
 | El LLM a veces cuenta mal los dígitos y pide repetir un número correcto                    | E8              | El backend garantiza el número; mejora futura: validar el número con una tool | Pendiente v2 |
 | La transcripción de la voz de Lucía tiene errores ("12 200 soles", "Lex and D.")           | E4, E5          | Limitación conocida: para revisar una llamada, usar la grabación de Vapi      | Limitación   |
