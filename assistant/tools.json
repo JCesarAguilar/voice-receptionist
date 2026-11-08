@@ -97,11 +97,12 @@
           },
           "area": {
             "type": "string",
-            "enum": ["civil", "penal", "laboral", "familia"]
+            "enum": ["civil", "penal", "laboral", "familia"],
+            "description": "Área deducida del caso: una detención o una denuncia es penal; un despido es laboral; un divorcio o una pensión es familia. Envíala siempre que se pueda deducir"
           },
           "summary": {
             "type": "string",
-            "description": "Resumen breve de lo que necesita"
+            "description": "Quién está afectado y qué pasó, por ejemplo: 'Su hijo fue detenido hace una hora'. Si no sabes quién está afectado, pregúntalo antes de derivar"
           }
         },
         "required": ["reason", "client_name", "client_whatsapp", "summary"]

@@ -19,7 +19,7 @@ FIRST_MESSAGE = (
     "Soy Lucía, ¿en qué te puedo ayudar?"
 )
 # Palabras que el reconocimiento de voz debe priorizar (palabra:peso).
-KEYWORDS = ["Andina:2", "laboral:2", "penal:2", "presencial:2"]
+KEYWORDS = ["laboral:1", "penal:1", "presencial:1"]
 
 
 def build_prompt() -> str:

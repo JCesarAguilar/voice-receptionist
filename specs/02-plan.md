@@ -17,10 +17,12 @@ La plataforma de voz resuelve el audio; nosotros construimos el cerebro: las too
 | Pago | **Página de pago propia con Culqi Checkout Custom** (la versión v4 está por retirarse); enviamos su link por WhatsApp. Tarjeta y Yape devuelven un token y el backend crea el cargo al instante; PagoEfectivo y billeteras usan la orden y se confirman por webhook | Culqi no entrega un link por API para órdenes: su Checkout se embebe en una página, así que la servimos nosotros ([docs de Culqi](https://docs.culqi.com/es/documentacion/pagos-online/ordenes-de-pago/resumen)) | Pedir la tarjeta por voz: riesgo de seguridad y normas de datos de tarjeta |
 | Confirmación del pago | **Webhook de Culqi** (`order.status.changed`) y resultado del cargo con tarjeta | El pago puede llegar minutos después; el webhook es la confirmación confiable | Consultar el estado cada cierto tiempo: más lento y más llamadas |
 | WhatsApp | **Interfaz propia + Twilio WhatsApp Sandbox** en la demo | Prueba gratis y rápida; detrás de una interfaz, cambiar a la API oficial de Meta es cambiar una clase | **WhatsApp Cloud API de Meta** directo: requiere verificar el negocio y plantillas aprobadas. Queda para producción |
-| Transcripción (voz a texto) | **ASR en streaming en español** (p. ej. Deepgram, configurado en Vapi) y, si el proveedor lo permite, palabras clave ("Lex Andina", nombres de las áreas) | Transcribe mientras el cliente habla: baja la latencia (A8). Es un modelo Transformer, el tipo que la lecture 2 del M4 recomienda para entender audio en tiempo real | **Whisper por tramos**: muy preciso, pero procesa el audio por partes y agrega espera en una conversación en vivo |
-| LLM del agente | **Modelo rápido de OpenAI** (variante mini), configurable | En voz la latencia manda; las tareas son acotadas | Un modelo grande: más lento y caro sin mejorar estas tareas |
-| Observabilidad | **Langfuse** para el backend + registros de llamada de Vapi | Ya lo dominas; traza cada tool con su latencia y resultado | Solo logs: sin jerarquía ni costos |
-| Webhooks en desarrollo | **ngrok** (URL pública temporal) | Vapi y Culqi necesitan llegar a tu backend local | Desplegar en cada cambio: lento para iterar |
+| Transcripción (voz a texto) | **ASR en streaming en español**: Deepgram nova-2, configurado en Vapi, con palabras clave solo para las áreas y con peso bajo | Transcribe mientras el cliente habla: baja la latencia (A8). Es un modelo Transformer, el tipo que la lecture 2 del M4 recomienda para entender audio en tiempo real | **Whisper por tramos**: muy preciso, pero procesa el audio por partes y agrega espera en una conversación en vivo |
+| LLM del agente | **gpt-4o-mini**, temperatura 0.3 | En voz la latencia manda; las tareas son acotadas; la temperatura baja da respuestas consistentes | Un modelo grande: más lento y caro sin mejorar estas tareas |
+| Voz sintética | **Azure `es-PE-CamilaNeural`** | Acento peruano: el cliente siente que habla con alguien de Lima | Voces neutras o de España: menos naturales para el público |
+| Configuración del asistente | **Como código**: `scripts/sync_vapi_assistant.py` crea o actualiza el asistente desde `assistant/` | El prompt, las tools y la voz quedan versionados en git; cada versión evaluada se puede reproducir | Configurarlo a mano en el panel de Vapi: no queda historial y se desincroniza del repo |
+| Observabilidad | **Langfuse** (un span por tool, agrupados por llamada) + reporte de fin de llamada de Vapi guardado en la tabla `calls` | Ya lo dominas; traza cada tool con su latencia y resultado; la base guarda transcripción, duración y costo | Solo logs: sin jerarquía ni costos |
+| Webhooks en desarrollo | **ngrok** con dominio fijo, apuntando a `127.0.0.1:8000` | Vapi y Culqi necesitan llegar a tu backend local; con `127.0.0.1` se evita que `localhost` se resuelva a IPv6 y no encuentre a uvicorn | Desplegar en cada cambio: lento para iterar |
 
 ## 2. Arquitectura
 
@@ -29,19 +31,20 @@ flowchart TD
     NAV[Navegador del cliente<br/>Vapi Web SDK] <-- voz --> VAPI[Vapi<br/>voz a texto · LLM · texto a voz]
     VAPI -- tool calls por webhook --> R
     subgraph BACKEND[Backend FastAPI - Python]
-        R[Routers - capa HTTP<br/>/vapi/tools · /pagar · /webhooks/culqi · /webhooks/vapi]
-        S[Servicios: las reglas del negocio<br/>disponibilidad · reservas · pagos · derivación · expiración]
+        R[Routers - capa HTTP<br/>/ demo · /vapi/tools · /pagar · /payments · /webhooks/culqi · /webhooks/vapi]
+        S[Servicios: las reglas del negocio<br/>disponibilidad · reservas y pagos · derivación · registro de llamadas]
         R --> S
         S -- vía interfaces - puertos --> GC[Google Calendar<br/>horarios ocupados]
         S --> CQ[Culqi<br/>órdenes y pagos]
         S --> DB[Base de datos<br/>reservas y estados]
         S --> WA[WhatsApp<br/>Twilio Sandbox]
     end
-    BACKEND --> LF[Langfuse<br/>traza de cada tool]
+    JOB[Job cada minuto<br/>vence reservas sin pagar] --> S
+    BACKEND --> LF[Langfuse<br/>traza de cada tool y de cada llamada]
     WA --> CW[WhatsApp del cliente<br/>link de pago y confirmación]
 ```
 
-Los routers solo reciben y responden HTTP; los servicios aplican las reglas y hablan con Calendar, Culqi, la base de datos y WhatsApp a través de interfaces. El cliente paga desde el link de WhatsApp en nuestra página `/pagar`, y Culqi avisa el pago a `/webhooks/culqi`.
+Los routers solo reciben y responden HTTP; los servicios aplican las reglas y hablan con Calendar, Culqi, la base de datos y WhatsApp a través de interfaces. El cliente paga desde el link de WhatsApp en nuestra página `/pagar`: con tarjeta o Yape el cobro se confirma al instante, y con PagoEfectivo o billeteras Culqi avisa el pago a `/webhooks/culqi`. Al colgar, Vapi envía el reporte de la llamada a `/webhooks/vapi`.
 
 ## 3. Estructura de carpetas y SOLID
 
@@ -50,36 +53,46 @@ Arquitectura hexagonal (puertos y adaptadores): las reglas del negocio no saben 
 ```text
 voice-receptionist/
 ├── app/
-│   ├── main.py              # crea la app FastAPI y registra los routers
+│   ├── main.py              # crea la app FastAPI, registra los routers y arranca el job
 │   ├── config.py            # settings con pydantic-settings (.env)
-│   ├── api/                 # capa HTTP: traduce HTTP <-> servicios, sin lógica
-│   │   ├── vapi_tools.py    # POST /vapi/tools (recibe las tool calls)
-│   │   ├── payments.py      # GET /pagar/{id} y POST /payments/charge
+│   ├── container.py         # raíz de composición: une servicios con adaptadores reales
+│   ├── api/                 # capa HTTP: traduce HTTP <-> servicios, sin lógica de negocio
+│   │   ├── vapi_tools.py    # POST /vapi/tools (recibe las tool calls) + secreto
+│   │   ├── tool_dispatcher.py # elige el handler de cada tool y mide su latencia
+│   │   ├── payment_page.py  # GET /pagar/{id} (página con Culqi Checkout)
+│   │   ├── payments.py      # POST /payments/{id}/order y /payments/{id}/charge
+│   │   ├── demo_page.py     # GET / (botón para hablar con Lucía)
 │   │   └── webhooks.py      # POST /webhooks/culqi y /webhooks/vapi
 │   ├── domain/              # reglas puras, sin librerías externas
-│   │   ├── models.py        # Booking, Client, Area, BookingStatus
-│   │   ├── rules.py         # horario, duración, anticipación, precios
-│   │   └── ports.py         # interfaces: CalendarPort, PaymentPort, MessagingPort, BookingRepository
+│   │   ├── models.py        # Booking, Client, CallReport, Area, BookingStatus, precios
+│   │   ├── rules.py         # horario, duración, anticipación
+│   │   └── ports.py         # interfaces: Calendar, Payment, Messaging, repositorios, Tracer, Clock
 │   ├── services/            # casos de uso
 │   │   ├── availability.py  # horarios libres
-│   │   ├── booking.py       # reservar, confirmar, expirar
-│   │   ├── payment.py       # crear orden, procesar webhook
-│   │   └── handoff.py       # derivar a una persona
+│   │   ├── booking.py       # reservar, cobrar, confirmar, expirar, pago tardío
+│   │   ├── handoff.py       # derivar a una persona
+│   │   ├── calls.py         # registrar el reporte de cada llamada
+│   │   └── messages.py      # textos de WhatsApp
 │   ├── adapters/            # implementaciones concretas de los puertos
 │   │   ├── google_calendar.py
 │   │   ├── culqi.py
 │   │   ├── twilio_whatsapp.py
-│   │   └── sql_repository.py
-│   ├── schemas/tools.py     # contratos Pydantic de cada tool
-│   ├── jobs/expire_holds.py # libera horarios sin pagar
-│   └── observability.py     # Langfuse
+│   │   ├── sql_repository.py  # tablas bookings y calls
+│   │   ├── langfuse_tracer.py # Langfuse, o nada si no hay llaves
+│   │   └── clock.py
+│   ├── schemas/             # contratos Pydantic: tools, pagos, webhooks
+│   └── jobs/expire_holds.py # vence reservas sin pagar cada minuto
 ├── assistant/               # config de Vapi versionada
 │   ├── system_prompt.md
 │   ├── estudio.md           # información del estudio para las preguntas frecuentes
-│   └── tools.json
-├── templates/pagar.html     # página con Culqi Checkout
-├── tests/                   # unit (con fakes) e integration
-├── specs/                   # 01-spec.md, 02-plan.md, 03-tasks.md
+│   └── tools.json           # descripción y parámetros de las 3 tools
+├── scripts/
+│   ├── sync_vapi_assistant.py # crea o actualiza el asistente en Vapi
+│   ├── eval_metrics.py      # WER de la evaluación
+│   └── try_*.py             # pruebas manuales de cada servicio externo
+├── templates/               # pagar.html y demo.html
+├── tests/                   # unitarias (con fakes) e integración
+├── specs/                   # 01-spec, 02-plan, 03-tasks y evaluacion
 ├── .env.example
 ├── requirements.txt
 ├── requirements-dev.txt
@@ -104,6 +117,10 @@ Vapi llama a un solo endpoint, `POST /vapi/tools`, con la lista de tool calls; e
 | `create_booking` | `area`, `start` (fecha y hora ISO), `modality` (presencial o virtual), `client_name`, `client_whatsapp` (+51…), `summary` | `booking_id`, precio y "link enviado por WhatsApp" | A1, A3, A4: valida de nuevo el horario, crea el evento PENDIENTE y envía el link (la orden de Culqi se crea después, en la página de pago) |
 | `handoff_to_human` | `reason` (urgencia, pedido del cliente, no entiende), `client_name`, `client_whatsapp`, `area` opcional, `summary` | "Aviso enviado" | A6: WhatsApp al responsable con los datos y el resumen |
 
+**Errores que ayudan a corregir:** si el agente manda un WhatsApp mal formado, el error dice cuántos dígitos llegaron (por ejemplo, "Recibí 10 dígitos"). Así el LLM ve su error y lo corrige en vez de repreguntar a ciegas (escenario E12 de `evaluacion.md`). Un número de 9 dígitos sin `+51` se completa solo.
+
+**Las reglas de una tool van en su descripción:** el modelo lee la descripción de los parámetros justo antes de llamar la tool, y la respeta más que una regla del prompt general (escenario E8).
+
 **Por qué `create_booking` vuelve a validar el horario:** entre la consulta y la reserva otro cliente pudo tomarlo. La regla de no reservar ocupados (A2) se garantiza en el servidor, no se confía en el LLM.
 
 **Por qué no hay tool de preguntas frecuentes:** la información del estudio va en el prompt (ver decisiones). Si crece, se agrega una tool `search_faq` con RAG sin cambiar las demás (principio abierto/cerrado).
@@ -123,10 +140,11 @@ Una reserva solo tiene 3 estados y cada cambio lo dispara un evento concreto.
 1. `create_booking` guarda la reserva en `PENDING_PAYMENT`, crea el evento PENDIENTE en el calendario y envía por WhatsApp el link a nuestra página `/pagar/{booking_id}`. Todavía no existe orden en Culqi.
 2. El cliente abre la página y **escribe su email** (no se dicta por voz: así no hay errores de transcripción).
 3. Recién entonces el backend crea la orden en Culqi por el precio del área, con el email real del cliente (`start_payment`).
-4. La página abre Culqi Checkout y el cliente paga con tarjeta o Yape.
-5. Culqi avisa al webhook `/webhooks/culqi`; el backend consulta la orden en la API, busca la reserva y la pasa a `CONFIRMED`.
+4. La página abre Culqi Checkout Custom. Con tarjeta o Yape, Culqi devuelve un token y la página lo envía a `POST /payments/{id}/charge`: el backend crea el cargo y, si se aprueba, la reserva pasa a `CONFIRMED` al instante.
+5. Con PagoEfectivo o billeteras, el cliente paga después: Culqi avisa al webhook `/webhooks/culqi`, el backend consulta la orden en la API, busca la reserva y la pasa a `CONFIRMED`.
 6. El backend actualiza el evento y envía el WhatsApp de confirmación.
-7. Cada minuto, `expire_holds` pasa a `EXPIRED` las reservas pendientes con más de 30 minutos, tengan o no una orden creada.
+7. Cada minuto, `expire_holds` pasa a `EXPIRED` las reservas pendientes con más de 30 minutos, tengan o no una orden creada. Antes de vencerla, pregunta a Culqi: si la orden ya estaba pagada y el aviso no llegó, la confirma.
+8. Si llega un pago de una reserva ya vencida, no se recupera el horario: se avisa al responsable y al cliente (pago tardío).
 
 **Por qué la orden se crea en la página y no durante la llamada:** Culqi pide el email del cliente para crear la orden. Pedirlo por voz es propenso a errores, y en la página el cliente lo escribe. Además, si el cliente nunca abre el link, no queda una orden de más en Culqi.
 
@@ -136,9 +154,9 @@ Una reserva solo tiene 3 estados y cada cambio lo dispara un evento concreto.
 
 **Observabilidad (cubre A9):**
 
-- Langfuse: una traza por llamada, agrupada por el `call.id` de Vapi; un span por tool con sus argumentos, resultado, latencia y errores.
-- Webhook `end-of-call-report` de Vapi: guarda transcripción, duración y costo de cada llamada en la base de datos.
-- Logs estructurados con el `booking_id` en cada línea, para seguir una reserva de punta a punta.
+- Langfuse: un span por tool con sus argumentos, resultado, latencia (`latency_ms`) y errores en rojo; todos los de una llamada comparten sesión (el `call.id` de Vapi).
+- Webhook `end-of-call-report` de Vapi: guarda transcripción, duración, costo y motivo de cierre en la tabla `calls`, y lo envía a la misma sesión de Langfuse.
+- La observabilidad nunca tumba al sistema: si Langfuse falla, la tool responde igual; sin llaves, se usa un tracer que no hace nada.
 
 **Pruebas en 3 niveles:**
 
@@ -146,7 +164,7 @@ Una reserva solo tiene 3 estados y cada cambio lo dispara un evento concreto.
 | --- | --- | --- |
 | Unitarias | Reglas y servicios: horarios libres, precios, anticipación, expiración, idempotencia | pytest con fakes de los puertos; sin internet ni costo |
 | Integración | Endpoints: formato de Vapi, webhook de Culqi, página de pago | `TestClient` de FastAPI con adaptadores falsos |
-| Golden cases | Los 13 escenarios de la Spec (E1–E13) | Llamadas de prueba reales con Vapi en modo de prueba; resultado registrado en una tabla por versión |
+| Golden cases | Los 13 escenarios de la Spec (E1–E13) | Llamadas reales desde la página de la demo; resultado registrado en `specs/evaluacion.md` por versión |
 
 **Evaluación:** por cada versión se corren E1–E13 y se mide contra A1–A10: agendas correctas, horarios ocupados respetados, derivaciones, latencia promedio. Un cambio de prompt o de modelo solo entra si no empeora ninguna métrica.
 
@@ -154,7 +172,7 @@ Una reserva solo tiene 3 estados y cada cambio lo dispara un evento concreto.
 
 | Métrica | Qué mide | Meta |
 | --- | --- | --- |
-| WER general | Palabras mal transcritas / palabras de la referencia, sobre las grabaciones de E1–E13 | Se registra por versión; sirve para comparar proveedores de ASR |
+| WER general | Palabras mal transcritas / palabras de la referencia, calculado con `scripts/eval_metrics.py` sobre las frases del cliente | Se registra por versión; sirve para comparar proveedores de ASR |
 | Precisión de entidades críticas | ¿Se capturaron exactos el número de WhatsApp, la fecha, la hora y el área? | 100% en el WhatsApp (A10); 9 de 10 en el resto (A3) |
 
 Si un escenario falla, el diagnóstico sigue este orden: ¿el audio fue claro? → ¿el ASR transcribió bien? → ¿el LLM entendió bien? Cambiar el LLM no arregla una transcripción mala.
@@ -164,7 +182,8 @@ Si un escenario falla, el diagnóstico sigue este orden: ¿el audio fue claro? �
 **Seguridad:**
 
 - Secretos solo en `.env` (Vapi, Google, Culqi, Twilio, Langfuse), validados al arrancar con pydantic-settings.
-- `/vapi/tools` exige un secreto compartido en el encabezado que Vapi envía; sin él responde 401.
+- `/vapi/tools` y `/webhooks/vapi` exigen un secreto compartido en el encabezado `x-vapi-secret`; sin él responden 401.
+- La llave pública de Vapi va en la página de la demo; antes de publicarla se restringe a los dominios permitidos.
 - El webhook de Culqi no se cree a ciegas: el backend consulta la orden en la API de Culqi antes de confirmar.
 - La página de pago usa un identificador difícil de adivinar (UUID), no un número correlativo.
 - Los datos de tarjeta nunca pasan por nuestro servidor: los maneja Culqi Checkout.
