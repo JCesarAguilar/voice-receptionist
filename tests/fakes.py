@@ -2,17 +2,20 @@
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Any
 from uuid import UUID
 
-from app.domain.models import Booking, BookingStatus
+from app.domain.models import Booking, BookingStatus, CallReport
 from app.domain.ports import (
     BookingRepository,
     CalendarPort,
+    CallReportRepository,
     Clock,
     MessagingPort,
     PaymentPort,
     PaymentStatus,
     TimeRange,
+    Tracer,
 )
 
 
@@ -119,9 +122,44 @@ class InMemoryBookingRepository:
         ]
 
 
+class RecordingTracer:
+    """Guarda cada tool call registrada, para revisarla en los tests."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+        self.ended: list[CallReport] = []
+
+    def tool_call(
+        self,
+        *,
+        call_id: str | None,
+        name: str,
+        arguments: dict[str, Any],
+        output: str,
+        ok: bool,
+        seconds: float,
+    ) -> None:
+        self.calls.append(
+            {"call_id": call_id, "name": name, "ok": ok, "seconds": seconds}
+        )
+
+    def call_ended(self, report: CallReport) -> None:
+        self.ended.append(report)
+
+
+class InMemoryCallReportRepository:
+    def __init__(self) -> None:
+        self.reports: dict[str, CallReport] = {}
+
+    def save(self, report: CallReport) -> None:
+        self.reports[report.call_id] = report
+
+
 # Verificación estática: si un fake no cumple su puerto, Pylance lo marca aquí.
 _clock: Clock = FixedClock(datetime(2026, 1, 1))
 _calendar: CalendarPort = FakeCalendar()
 _payments: PaymentPort = FakePayments()
 _messaging: MessagingPort = FakeMessaging()
 _repository: BookingRepository = InMemoryBookingRepository()
+_tracer: Tracer = RecordingTracer()
+_calls: CallReportRepository = InMemoryCallReportRepository()

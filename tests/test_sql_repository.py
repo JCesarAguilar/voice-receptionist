@@ -3,8 +3,12 @@ from uuid import uuid4
 
 import pytest
 
-from app.adapters.sql_repository import SqlBookingRepository, make_engine
-from app.domain.models import BookingStatus
+from app.adapters.sql_repository import (
+    SqlBookingRepository,
+    SqlCallReportRepository,
+    make_engine,
+)
+from app.domain.models import BookingStatus, CallReport
 from tests.factories import LIMA, NOW, make_booking
 
 
@@ -85,3 +89,23 @@ def test_data_survives_a_restart(database_url):
     restarted = SqlBookingRepository(make_engine(database_url), LIMA)
 
     assert restarted.get(booking.id) == booking
+
+
+def test_call_report_saved_twice_is_updated_not_duplicated(database_url):
+    repo = SqlCallReportRepository(make_engine(database_url))
+    report = CallReport(
+        call_id="call-1",
+        ended_reason="customer-ended-call",
+        duration_seconds=60,
+        cost_usd=0.10,
+        transcript="Hola",
+        summary="",
+        created_at=NOW,
+    )
+
+    repo.save(report)
+    repo.save(report.model_copy(update={"cost_usd": 0.20}))
+
+    saved = repo.get("call-1")
+    assert saved is not None
+    assert saved.cost_usd == 0.20

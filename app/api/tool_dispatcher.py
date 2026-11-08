@@ -1,13 +1,16 @@
 """Traduce cada tool call de Vapi en una llamada a los servicios del núcleo."""
 
 import logging
+import time
 from collections.abc import Callable
 from typing import Any
 from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
 
+from app.adapters.langfuse_tracer import NoopTracer
 from app.domain.models import Client, format_soles
+from app.domain.ports import Tracer
 from app.domain.rules import ScheduleRuleError
 from app.schemas.tools import (
     CheckAvailabilityArgs,
@@ -44,18 +47,34 @@ class ToolDispatcher:
         booking: BookingService,
         handoff: HandoffService,
         timezone: ZoneInfo,
+        tracer: Tracer | None = None,
     ) -> None:
         self._availability = availability
         self._booking = booking
         self._handoff = handoff
         self._timezone = timezone
+        self._tracer = tracer or NoopTracer()
         self._handlers: dict[str, ToolHandler] = {
             "check_availability": self._check_availability,
             "create_booking": self._create_booking,
             "handoff_to_human": self._handoff_to_human,
         }
 
-    def run(self, call: ToolCall) -> ToolResult:
+    def run(self, call: ToolCall, call_id: str | None = None) -> ToolResult:
+        """Ejecuta la tool y registra qué pasó y cuánto tardó."""
+        started = time.perf_counter()
+        result = self._run(call)
+        self._tracer.tool_call(
+            call_id=call_id,
+            name=call.function.name,
+            arguments=call.function.arguments,
+            output=result.result or result.error or "",
+            ok=result.error is None,
+            seconds=time.perf_counter() - started,
+        )
+        return result
+
+    def _run(self, call: ToolCall) -> ToolResult:
         handler = self._handlers.get(call.function.name)
         if handler is None:
             message = f"La tool '{call.function.name}' no existe."

@@ -2,10 +2,10 @@
 
 from datetime import datetime
 from enum import StrEnum
-from typing import NamedTuple, Protocol
+from typing import Any, NamedTuple, Protocol
 from uuid import UUID
 
-from app.domain.models import Booking
+from app.domain.models import Booking, CallReport
 
 
 class TimeRange(NamedTuple):
@@ -67,3 +67,26 @@ class BookingRepository(Protocol):
     def update(self, booking: Booking) -> None: ...
 
     def pending_created_before(self, cutoff: datetime) -> list[Booking]: ...
+
+
+class Tracer(Protocol):
+    """Registra lo que pasa en cada llamada, para poder revisarla después."""
+
+    def tool_call(
+        self,
+        *,
+        call_id: str | None,
+        name: str,
+        arguments: dict[str, Any],
+        output: str,
+        ok: bool,
+        seconds: float,
+    ) -> None: ...
+
+    def call_ended(self, report: CallReport) -> None: ...
+
+
+class CallReportRepository(Protocol):
+    """Guarda el reporte de cada llamada terminada."""
+
+    def save(self, report: CallReport) -> None: ...

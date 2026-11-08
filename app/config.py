@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     twilio_auth_token: SecretStr
     twilio_whatsapp_from: str
     handoff_whatsapp_to: str
-    langfuse_public_key: str
-    langfuse_secret_key: SecretStr
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: SecretStr | None = None
     langfuse_base_url: str = "https://cloud.langfuse.com"
     public_base_url: str
     database_url: str = "sqlite:///receptionist.db"

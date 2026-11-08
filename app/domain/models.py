@@ -141,3 +141,15 @@ class Booking(BaseModel):
             return False
         self.late_payment_at = at
         return True
+
+
+class CallReport(BaseModel):
+    """El resumen de una llamada terminada: qué pasó, cuánto duró y costó."""
+
+    call_id: str = Field(min_length=1)
+    ended_reason: str
+    duration_seconds: float = Field(ge=0)
+    cost_usd: float = Field(ge=0)
+    transcript: str
+    summary: str
+    created_at: datetime

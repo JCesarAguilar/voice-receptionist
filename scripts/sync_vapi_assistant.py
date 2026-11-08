@@ -55,6 +55,11 @@ def build_assistant() -> dict:
             "language": "es",
             "keywords": KEYWORDS,
         },
+        "server": {
+            "url": f"{settings.public_base_url}/webhooks/vapi",
+            "headers": {"x-vapi-secret": secret},
+        },
+        "serverMessages": ["end-of-call-report"],
     }
 
 

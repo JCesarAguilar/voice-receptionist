@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import Engine
 from sqlmodel import Field, Session, SQLModel, col, create_engine, select
 
-from app.domain.models import Area, Booking, BookingStatus, Client, Modality
+from app.domain.models import Area, Booking, BookingStatus, CallReport, Client, Modality
 
 
 class BookingRow(SQLModel, table=True):
@@ -121,3 +121,34 @@ class SqlBookingRepository:
             confirmed_at=self._from_db_optional(row.confirmed_at),
             late_payment_at=self._from_db_optional(row.late_payment_at),
         )
+
+
+class CallRow(SQLModel, table=True):
+    """Cómo se guarda el reporte de una llamada en la tabla `calls`."""
+
+    __tablename__ = "calls"  # type: ignore[assignment]  # falso positivo de SQLModel
+
+    call_id: str = Field(primary_key=True)
+    ended_reason: str
+    duration_seconds: float
+    cost_usd: float
+    transcript: str
+    summary: str
+    created_at: datetime = Field(index=True)
+
+
+class SqlCallReportRepository:
+    """Cumple el puerto CallReportRepository. Guardar dos veces no duplica."""
+
+    def __init__(self, engine: Engine) -> None:
+        self._engine = engine
+
+    def save(self, report: CallReport) -> None:
+        with Session(self._engine) as session:
+            session.merge(CallRow(**report.model_dump()))
+            session.commit()
+
+    def get(self, call_id: str) -> CallReport | None:
+        with Session(self._engine) as session:
+            row = session.get(CallRow, call_id)
+            return CallReport(**row.model_dump()) if row else None

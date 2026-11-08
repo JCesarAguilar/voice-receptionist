@@ -34,5 +34,6 @@ def handle_tool_calls(
     dispatcher: Annotated[ToolDispatcher, Depends(get_tool_dispatcher)],
 ) -> VapiToolResponse:
     """Ejecuta cada tool call y responde en el formato que espera Vapi."""
-    results = [dispatcher.run(call) for call in request.message.tool_call_list]
+    call_id = request.message.call.id if request.message.call else None
+    results = [dispatcher.run(call, call_id) for call in request.message.tool_call_list]
     return VapiToolResponse(results=results)

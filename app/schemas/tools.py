@@ -29,8 +29,13 @@ class ToolCall(BaseModel):
     function: ToolFunction
 
 
+class VapiCall(BaseModel):
+    id: str
+
+
 class VapiMessage(BaseModel):
     type: str
+    call: VapiCall | None = None
     tool_call_list: list[ToolCall] = Field(default_factory=list, alias="toolCallList")
 
 

@@ -39,8 +39,8 @@ Aquí se crean las cuentas de prueba. Cada adaptador implementa su puerto; los s
 
 - [x] **T18 · Prompt e información del estudio.** `assistant/estudio.md` (áreas, precios, dirección, horarios, modalidades) y `assistant/system_prompt.md` con rol, contexto, tarea, formato y los límites de la Spec. _Hecho cuando:_ el prompt cubre cada regla de la sección 5 de la Spec y está versionado.
 - [x] **T19 · Asistente en Vapi.** Modelo mini, voz en español, reconocimiento de voz en español las 3 tools apuntando a la URL de ngrok y el ASR en streaming en español (con palabras clave si el proveedor lo permite); guardar la configuración en `assistant/tools.json`. _Hecho cuando:_ desde el panel de Vapi, una llamada de prueba agenda E1 de punta a punta.
-- [ ] **T20 · Página de la demo.** Página con el Web SDK de Vapi y un botón "Hablar con la recepcionista". _Hecho cuando:_ desde el navegador se completa E1 y llega el WhatsApp con el link.
-- [ ] **T21 · Observabilidad.** Traza de Langfuse por llamada con un span por tool, y webhook `end-of-call-report` guardado en la base. _Hecho cuando:_ en Langfuse se ve una llamada con sus tools, latencias y resultado.
+- [x] **T20 · Página de la demo.** Página con el Web SDK de Vapi y un botón "Hablar con la recepcionista". _Hecho cuando:_ desde el navegador se completa E1 y llega el WhatsApp con el link.
+- [x] **T21 · Observabilidad.** Traza de Langfuse por llamada con un span por tool, y webhook `end-of-call-report` guardado en la base. _Hecho cuando:_ en Langfuse se ve una llamada con sus tools, latencias y resultado.
 
 ## Fase 5 — Evaluación y entrega
 

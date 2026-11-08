@@ -2,7 +2,7 @@ from app.api.tool_dispatcher import ToolDispatcher
 from app.domain.ports import TimeRange
 from app.schemas.tools import ToolCall, ToolResult
 from tests.factories import LIMA, THURSDAY, at
-from tests.fakes import FakeCalendar
+from tests.fakes import FakeCalendar, RecordingTracer
 from tests.test_booking import STAFF, Env, make_env
 
 
@@ -132,3 +132,34 @@ def test_unexpected_failure_suggests_handoff():
     )
 
     assert "derivar a una persona" in failed(result)
+
+
+def test_every_tool_call_is_traced_with_its_call_id():
+    env = make_env()
+    tracer = RecordingTracer()
+    dispatcher = ToolDispatcher(
+        env.availability, env.service, env.service._handoff, LIMA, tracer=tracer
+    )
+
+    dispatcher.run(
+        call("check_availability", area="laboral", date="2026-11-12"),
+        call_id="vapi-call-1",
+    )
+
+    [traced] = tracer.calls
+    assert traced["call_id"] == "vapi-call-1"
+    assert traced["name"] == "check_availability"
+    assert traced["ok"] is True
+    assert traced["seconds"] >= 0
+
+
+def test_failed_tool_is_traced_as_error():
+    env = make_env()
+    tracer = RecordingTracer()
+    dispatcher = ToolDispatcher(
+        env.availability, env.service, env.service._handoff, LIMA, tracer=tracer
+    )
+
+    dispatcher.run(call("tool_que_no_existe"))
+
+    assert tracer.calls[0]["ok"] is False
