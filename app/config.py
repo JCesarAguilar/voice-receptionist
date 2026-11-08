@@ -20,6 +20,8 @@ class Settings(BaseSettings):
 
     # --- Secretos y conexiones (obligatorios) ---
     vapi_tools_secret: SecretStr
+    vapi_api_key: SecretStr | None = None
+    vapi_assistant_id: str | None = None
     google_calendar_id: str
     google_service_account_file: str
     culqi_public_key: str

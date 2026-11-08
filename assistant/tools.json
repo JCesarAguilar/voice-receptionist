@@ -1,0 +1,111 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "check_availability",
+      "description": "Busca hasta 3 horarios libres para una consulta en un día. Úsala siempre antes de proponer o reservar un horario.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "area": {
+            "type": "string",
+            "enum": ["civil", "penal", "laboral", "familia"]
+          },
+          "date": {
+            "type": "string",
+            "description": "Día pedido, formato YYYY-MM-DD"
+          },
+          "preferred_time": {
+            "type": "string",
+            "description": "Hora preferida, formato HH:MM (opcional)"
+          }
+        },
+        "required": ["area", "date"]
+      }
+    },
+    "messages": [
+      { "type": "request-start", "content": "Déjame revisar la agenda." }
+    ]
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "create_booking",
+      "description": "Reserva el horario y envía el link de pago por WhatsApp. Úsala solo después de que el cliente confirmó todos los datos en voz alta.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "area": {
+            "type": "string",
+            "enum": ["civil", "penal", "laboral", "familia"]
+          },
+          "start": {
+            "type": "string",
+            "description": "Inicio exacto, el valor start=... que devolvió check_availability"
+          },
+          "modality": { "type": "string", "enum": ["presencial", "virtual"] },
+          "client_name": {
+            "type": "string",
+            "description": "Nombre completo del cliente"
+          },
+          "client_whatsapp": {
+            "type": "string",
+            "description": "Celular peruano en formato +519XXXXXXXX"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Motivo de la consulta en una o dos frases"
+          }
+        },
+        "required": [
+          "area",
+          "start",
+          "modality",
+          "client_name",
+          "client_whatsapp",
+          "summary"
+        ]
+      }
+    },
+    "messages": [
+      {
+        "type": "request-start",
+        "content": "Perfecto, estoy registrando tu reserva."
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "handoff_to_human",
+      "description": "Avisa por WhatsApp a un responsable del estudio para que contacte al cliente. Úsala en urgencias, si pide una persona o si no se entiende la consulta.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "urgencia",
+              "pedido del cliente",
+              "no se entendió la consulta"
+            ]
+          },
+          "client_name": { "type": "string" },
+          "client_whatsapp": {
+            "type": "string",
+            "description": "Celular peruano en formato +519XXXXXXXX"
+          },
+          "area": {
+            "type": "string",
+            "enum": ["civil", "penal", "laboral", "familia"]
+          },
+          "summary": {
+            "type": "string",
+            "description": "Resumen breve de lo que necesita"
+          }
+        },
+        "required": ["reason", "client_name", "client_whatsapp", "summary"]
+      }
+    }
+  }
+]
