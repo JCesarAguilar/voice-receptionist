@@ -40,7 +40,7 @@ def test_whatsapp_is_normalized():
 
 @pytest.mark.parametrize(
     "bad_number",
-    ["987654321", "+5112345678", "+1 555 123 4567", "+51 887 654 321"],
+    ["+5112345678", "+1 555 123 4567", "+51 887 654 321"],
 )
 def test_invalid_whatsapp_is_rejected(bad_number):
     with pytest.raises(ValidationError):
@@ -98,3 +98,12 @@ def test_late_payment_is_registered_only_once():
 def test_late_payment_requires_expired_booking():
     with pytest.raises(InvalidTransitionError):
         make_booking().register_late_payment(NOW)
+
+
+def test_whatsapp_without_country_code_is_completed():
+    assert Client(name="Ana Torres", whatsapp="987654321").whatsapp == "+51987654321"
+
+
+def test_whatsapp_error_says_how_many_digits_arrived():
+    with pytest.raises(ValidationError, match="Recibí 10 dígitos"):
+        Client(name="Ana Torres", whatsapp="+519565822267")

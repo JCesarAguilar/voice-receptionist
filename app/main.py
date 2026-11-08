@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.demo_page import router as demo_router
 from app.api.payment_page import router as page_router
 from app.api.payments import router as payments_router
 from app.api.vapi_tools import router as vapi_router
@@ -28,6 +29,7 @@ app.include_router(vapi_router)
 app.include_router(payments_router)
 app.include_router(page_router)
 app.include_router(webhooks_router)
+app.include_router(demo_router)
 
 
 @app.get("/health")

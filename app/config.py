@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     public_base_url: str
     database_url: str = "sqlite:///receptionist.db"
     office_address: str = "Av. Larco 123, Miraflores, Lima"
+    vapi_public_key: str | None = None
 
     # --- Reglas de negocio (Spec, sección 5) ---
     timezone: str = "America/Lima"

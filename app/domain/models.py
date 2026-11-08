@@ -74,10 +74,17 @@ class Client(BaseModel):
     @field_validator("whatsapp", mode="before")
     @classmethod
     def normalize_whatsapp(cls, value: str) -> str:
-        """Acepta '+51 987 654 321' y lo guarda como '+51987654321'."""
+        """Acepta '+51 987 654 321' o '987654321' y guarda '+51987654321'."""
         cleaned = re.sub(r"[\s\-()]", "", str(value))
+        if re.fullmatch(r"9\d{8}", cleaned):
+            cleaned = f"+51{cleaned}"  # dictado sin el código de país
         if not PERU_MOBILE.match(cleaned):
-            raise ValueError("El WhatsApp debe ser un celular peruano: +51 9XX XXX XXX")
+            digits = re.sub(r"\D", "", cleaned).removeprefix("51")
+            raise ValueError(
+                f"WhatsApp inválido. Recibí {len(digits)} dígitos ({digits}); un "
+                "celular peruano tiene 9 y empieza en 9. Revisa si repetiste u "
+                "omitiste un dígito."
+            )
         return cleaned
 
 
